@@ -1,0 +1,253 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.searchGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: min(100%, 586px);
+  padding: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 0;
+  background: white;
+  box-shadow: var(--shadow-toolbar);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 296px;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: white;
+  box-shadow: 0 2px 2px rgba(0, 52, 99, 0.1);
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-high);
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchInput:focus {
+  outline: none;
+}
+
+.searchBox:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.filterControls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-high);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.toolButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolIcon {
+  color: var(--text-high);
+}
+
+.filterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fill-primary);
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  min-width: 240px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: white;
+  box-shadow: var(--shadow-surface);
+}
+
+.fieldset {
+  border: 0;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.fieldset:last-child {
+  margin-bottom: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.selectionRow {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  flex-wrap: wrap;
+}
+
+.selectedCount {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.checkbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 4px;
+  border: 2px solid var(--checkbox-border);
+  border-radius: 3px;
+  background: white;
+  cursor: pointer;
+}
+
+.checkbox:checked,
+.checkbox:indeterminate {
+  background: var(--fill-primary);
+  border-color: var(--fill-primary);
+}
+
+.checkbox:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='white' stroke-width='2' d='M3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.selectedLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-high);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.selectedLabel strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.downloadActions {
+  display: flex;
+  gap: 10px;
+}
+
+.downloadMuted,
+.downloadAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+}
+
+.downloadMuted {
+  border: 1px solid var(--bg-primary);
+  background: white;
+  color: var(--button-muted);
+}
+
+.downloadAll {
+  border: 1px solid var(--border-bold);
+  background: white;
+  color: var(--text-button);
+}
+
+.downloadMuted:disabled,
+.downloadAll:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.primaryButton {
+  padding: 8px 24px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--fill-primary);
+  color: white;
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButton:hover {
+  filter: brightness(0.96);
+}

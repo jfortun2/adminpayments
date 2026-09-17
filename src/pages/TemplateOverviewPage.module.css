@@ -1,0 +1,50 @@
+.toggle,
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #373a44;
+}
+
+.helper {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.switchOn,
+.switchOff {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.switchOn {
+  background: #3b82f6;
+}
+
+.switchOff {
+  background: #cbd2e0;
+}
+
+.switchOn span,
+.switchOff span {
+  position: absolute;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: white;
+}
+
+.switchOn span {
+  right: 2px;
+}
+
+.switchOff span {
+  left: 2px;
+}

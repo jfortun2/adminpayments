@@ -1,0 +1,107 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--overlay);
+}
+
+.panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  width: min(534px, calc(100% - 32px));
+  overflow: auto;
+  padding: 16px 24px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  background: white;
+  box-shadow: var(--shadow-surface);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 100%;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.support {
+  margin: 6px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.input {
+  width: 100%;
+  height: 56px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--text-high);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--border-danger);
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-danger);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.cancel,
+.primary {
+  padding: 8px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-button);
+}
+
+.cancel {
+  border: 1px solid var(--border-bold);
+  background: white;
+  color: var(--text-button);
+}
+
+.primary {
+  border: 0;
+  background: var(--fill-primary);
+  color: var(--text-white);
+}

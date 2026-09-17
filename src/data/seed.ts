@@ -1,0 +1,268 @@
+import type {
+  CourseSection,
+  PaymentBatch,
+  PaymentCode,
+  Person,
+  Template,
+} from "./types";
+
+export const CURRENT_USER_ID = "jessica";
+
+export const people: Person[] = [
+  { id: "hal", name: "Hal Turner", initials: "HT" },
+  { id: "mia", name: "Mia B", initials: "MB" },
+  { id: "jessica", name: "Jessica Fortunato", initials: "JF" },
+  { id: "joe", name: "Joe Smith", initials: "JS" },
+  { id: "priya", name: "Priya Nair", initials: "PN" },
+  { id: "omar", name: "Omar Alvarez", initials: "OA" },
+];
+
+export const templates: Template[] = [
+  { id: "intro-to-gardening", name: "Intro to Gardening" },
+  { id: "coffee-101", name: "Coffee 101" },
+  { id: "intro-biology", name: "Introduction to Biology" },
+  { id: "stats-foundations", name: "Statistics Foundations" },
+];
+
+export const sections: CourseSection[] = [
+  { id: "gardening-fall-26", name: "Gardening 101", templateId: "intro-to-gardening" },
+  { id: "gardening-summer-26", name: "Intro to Gardening — Summer", templateId: "intro-to-gardening" },
+  { id: "coffee-101-section", name: "Coffee 101", templateId: "coffee-101" },
+  { id: "bio-section-a", name: "Biology A", templateId: "intro-biology" },
+];
+
+function batch(
+  id: string,
+  templateId: string,
+  name: string,
+  createdAt: string,
+  createdById: string,
+  status: PaymentBatch["status"] = "active",
+): PaymentBatch {
+  return { id, templateId, name, createdAt, createdById, status };
+}
+
+export const seedBatches: PaymentBatch[] = [
+  batch("fall-partner", "intro-to-gardening", "Fall partner Codes", "2026-08-26", "hal"),
+  batch("summer-pilot", "intro-to-gardening", "Summer pilot", "2026-05-12", "mia"),
+  batch("spring-trial", "intro-to-gardening", "Spring trial", "2026-03-03", "hal", "deactivated"),
+  batch("publisher-preview", "intro-to-gardening", "Publisher preview", "2026-01-15", "mia"),
+  batch("coffee-launch", "coffee-101", "Campus launch codes", "2026-08-01", "jessica"),
+  batch("coffee-partners", "coffee-101", "Partner bookstore", "2026-06-18", "hal"),
+  batch("bio-orientation", "intro-biology", "Orientation week", "2026-07-22", "mia"),
+  batch("stats-pilot", "stats-foundations", "Dept pilot", "2026-04-09", "jessica"),
+];
+
+function code(partial: Omit<PaymentCode, "status"> & { status?: PaymentCode["status"] }): PaymentCode {
+  return { status: "unused", ...partial };
+}
+
+export const seedCodes: PaymentCode[] = [
+  code({
+    id: "c1",
+    batchId: "fall-partner",
+    code: "H7k4-92QT",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+  }),
+  code({
+    id: "c2",
+    batchId: "fall-partner",
+    code: "N3p8-14KA",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "joe",
+    redeemedAt: "2026-08-27",
+    redeemedForSectionId: "coffee-101-section",
+  }),
+  code({
+    id: "c3",
+    batchId: "fall-partner",
+    code: "Q9m2-77LX",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+  }),
+  code({
+    id: "c4",
+    batchId: "fall-partner",
+    code: "B6t1-03VW",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "priya",
+    redeemedAt: "2026-08-29",
+    redeemedForSectionId: "gardening-fall-26",
+  }),
+  code({
+    id: "c5",
+    batchId: "fall-partner",
+    code: "R2c8-55YH",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+  }),
+  code({
+    id: "c6",
+    batchId: "fall-partner",
+    code: "K8d4-19ZP",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "joe",
+    redeemedAt: "2026-09-02",
+    redeemedForSectionId: "coffee-101-section",
+  }),
+  code({
+    id: "c7",
+    batchId: "fall-partner",
+    code: "F5w7-88NM",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+  }),
+  code({
+    id: "c8",
+    batchId: "fall-partner",
+    code: "J1a9-42ST",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "omar",
+    redeemedAt: "2026-09-04",
+    redeemedForSectionId: "gardening-fall-26",
+  }),
+  code({
+    id: "c9",
+    batchId: "fall-partner",
+    code: "P4e6-61BQ",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+  }),
+  code({
+    id: "c10",
+    batchId: "fall-partner",
+    code: "M7h3-28DR",
+    createdAt: "2026-08-26",
+    createdById: "hal",
+    status: "deactivated",
+  }),
+  code({
+    id: "c11",
+    batchId: "summer-pilot",
+    code: "S2k9-17FG",
+    createdAt: "2026-05-12",
+    createdById: "mia",
+    status: "redeemed",
+    redeemedById: "priya",
+    redeemedAt: "2026-05-20",
+    redeemedForSectionId: "gardening-summer-26",
+  }),
+  code({
+    id: "c12",
+    batchId: "summer-pilot",
+    code: "T8n5-90UJ",
+    createdAt: "2026-05-12",
+    createdById: "mia",
+  }),
+  code({
+    id: "c13",
+    batchId: "summer-pilot",
+    code: "V3q1-46CE",
+    createdAt: "2026-05-12",
+    createdById: "mia",
+    status: "redeemed",
+    redeemedById: "joe",
+    redeemedAt: "2026-06-01",
+    redeemedForSectionId: "gardening-summer-26",
+  }),
+  code({
+    id: "c14",
+    batchId: "summer-pilot",
+    code: "W6y4-73HK",
+    createdAt: "2026-05-12",
+    createdById: "mia",
+  }),
+  code({
+    id: "c15",
+    batchId: "summer-pilot",
+    code: "X1b8-22LM",
+    createdAt: "2026-05-12",
+    createdById: "mia",
+    status: "deactivated",
+  }),
+  code({
+    id: "c16",
+    batchId: "spring-trial",
+    code: "A9c2-11OP",
+    createdAt: "2026-03-03",
+    createdById: "hal",
+    status: "deactivated",
+  }),
+  code({
+    id: "c17",
+    batchId: "spring-trial",
+    code: "C4d7-65QR",
+    createdAt: "2026-03-03",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "omar",
+    redeemedAt: "2026-03-18",
+    redeemedForSectionId: "gardening-fall-26",
+  }),
+  code({
+    id: "c18",
+    batchId: "publisher-preview",
+    code: "D5f3-38ST",
+    createdAt: "2026-01-15",
+    createdById: "mia",
+  }),
+  code({
+    id: "c19",
+    batchId: "publisher-preview",
+    code: "E8g6-49UV",
+    createdAt: "2026-01-15",
+    createdById: "mia",
+  }),
+  code({
+    id: "c20",
+    batchId: "publisher-preview",
+    code: "G2h9-70WX",
+    createdAt: "2026-01-15",
+    createdById: "mia",
+    status: "redeemed",
+    redeemedById: "priya",
+    redeemedAt: "2026-02-02",
+    redeemedForSectionId: "gardening-fall-26",
+  }),
+  code({
+    id: "c21",
+    batchId: "coffee-launch",
+    code: "L3j1-15YZ",
+    createdAt: "2026-08-01",
+    createdById: "jessica",
+  }),
+  code({
+    id: "c22",
+    batchId: "coffee-partners",
+    code: "U7k5-84AB",
+    createdAt: "2026-06-18",
+    createdById: "hal",
+    status: "redeemed",
+    redeemedById: "joe",
+    redeemedAt: "2026-07-01",
+    redeemedForSectionId: "coffee-101-section",
+  }),
+  code({
+    id: "c23",
+    batchId: "bio-orientation",
+    code: "Y4m8-27CD",
+    createdAt: "2026-07-22",
+    createdById: "mia",
+  }),
+  code({
+    id: "c24",
+    batchId: "stats-pilot",
+    code: "Z6n2-93EF",
+    createdAt: "2026-04-09",
+    createdById: "jessica",
+  }),
+];

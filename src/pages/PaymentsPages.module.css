@@ -1,0 +1,57 @@
+.page {
+  min-height: 100vh;
+  padding: 48px 64px 80px;
+  background: var(--bg-primary);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.crumbChevron {
+  color: #bab8bf;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  font-size: 16px;
+  line-height: 32px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 16px 0;
+  color: var(--text-button);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.backLink:hover {
+  text-decoration: none;
+}
+
+.backLink svg {
+  color: var(--text-button);
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: 24px 16px 48px;
+  }
+}

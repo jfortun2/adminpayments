@@ -1,0 +1,85 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #f3f4f8;
+  --bg-secondary: #ffffff;
+  --text-high: #353740;
+  --text-low: #45464c;
+  --text-muted: #757682;
+  --text-button: #006cd9;
+  --text-white: #ffffff;
+  --text-danger: #b60202;
+  --text-purple: #9a40a8;
+  --text-green: #218358;
+  --fill-primary: #0073e5;
+  --border-default: #ced1d9;
+  --border-bold: #8ab8e5;
+  --border-muted: #e6e9f2;
+  --border-danger: #ff4040;
+  --checkbox-border: #cbd2e0;
+  --table-header: #ffffff;
+  --table-row-1: #f3f4f8;
+  --table-row-2: #e3e7eb;
+  --table-border: #ced1d9;
+  --row-selected: #cfe3f8;
+  --row-hover: #dde7f1;
+  --overlay: rgba(53, 55, 64, 0.33);
+  --shadow-button: 0 2px 4px rgba(0, 52, 99, 0.1);
+  --shadow-toolbar: 0 2px 6.1px rgba(0, 0, 0, 0.1);
+  --shadow-surface: 0 2px 5px rgba(0, 50, 99, 0.1);
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+  --focus: #006cd9;
+  --button-muted: #003163;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Open Sans", system-ui, sans-serif;
+  color: var(--text-high);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: var(--text-button);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
