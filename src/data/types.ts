@@ -31,6 +31,7 @@ export interface CourseSection {
   name: string;
   templateId: string;
   institutionId: string;
+  instructorId: string;
 }
 
 export interface PaymentBatch {

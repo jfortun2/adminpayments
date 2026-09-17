@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarIcon, ChevronDownIcon, ChevronUpIcon, CombineIcon, DownloadIcon, SearchIcon } from "./Icons";
+import DownloadReportDialog from "./DownloadReportDialog";
+import { CalendarIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon, SearchIcon } from "./Icons";
 import tableStyles from "./PaymentsTable.module.css";
 import toolbarStyles from "./PaymentsToolbar.module.css";
 import Toast from "./Toast";
@@ -10,10 +11,15 @@ import {
   REPORT_GROUP_OPTIONS,
   buildReportRows,
   downloadReport,
+  downloadSelectedReports,
   filterEnrollmentsByDate,
   matchesReportQuery,
   parseReportGroup,
+  pluralize,
   reportFilename,
+  sectionRowsFromReports,
+  summarizeSelection,
+  type ReportDownloadFormat,
   type ReportRow,
 } from "../data/reporting";
 import type { SortDirection } from "../data/types";
@@ -44,6 +50,7 @@ export default function EnrollmentReporting() {
   const [toast, setToast] = useState<string | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
   const dateRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<HTMLDivElement>(null);
   const searchId = useId();
@@ -83,7 +90,7 @@ export default function EnrollmentReporting() {
       if (!groupRef.current?.contains(event.target as Node)) setGroupOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !downloadScope) {
         setDateOpen(false);
         setGroupOpen(false);
       }
@@ -94,7 +101,7 @@ export default function EnrollmentReporting() {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
+  }, [downloadScope]);
 
   const datedEnrollments = useMemo(
     () => filterEnrollmentsByDate(enrollments, after, before),
@@ -133,6 +140,10 @@ export default function EnrollmentReporting() {
   const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
   const selectedRows = visibleRows.filter((row) => selected.includes(row.id));
   const columnCount = groupBy === "section" ? 10 : 8;
+  const downloadRows = downloadScope === "all" ? visibleRows : selectedRows;
+  const downloadSectionRows = sectionRowsFromReports(downloadRows, catalog);
+  const visibleSectionRows = sectionRowsFromReports(visibleRows, catalog);
+  const selectionSummary = summarizeSelection(downloadSectionRows, visibleSectionRows);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -153,22 +164,20 @@ export default function EnrollmentReporting() {
     );
   }
 
-  function downloadSeparate(rows: ReportRow[], message: string) {
-    rows.forEach((row, index) => {
-      window.setTimeout(() => {
-        downloadReport(reportFilename([row], false), row.enrollments, catalog);
-      }, index * 250);
-    });
-    setToast(message);
-  }
+  const closeDownloadDialog = useCallback(() => {
+    setDownloadScope(null);
+  }, []);
 
-  function downloadCombined(rows: ReportRow[]) {
-    downloadReport(
-      reportFilename(rows, true),
-      rows.flatMap((row) => row.enrollments),
-      catalog,
+  function handleDownload(format: ReportDownloadFormat) {
+    downloadSelectedReports(downloadRows, format, catalog);
+    setToast(
+      format === "zip"
+        ? `Downloaded ${pluralize(downloadSectionRows.length, "section report")}.`
+        : downloadSectionRows.length === 1
+          ? `Downloaded report for ${downloadSectionRows[0].name}.`
+          : `Downloaded combined report for ${pluralize(downloadSectionRows.length, "section")}.`,
     );
-    setToast(`Downloaded combined report for ${rows.length} ${groupLabel.toLowerCase()}s.`);
+    closeDownloadDialog();
   }
 
   function identityHeading() {
@@ -341,7 +350,7 @@ export default function EnrollmentReporting() {
             }}
             onChange={() => setSelected(allVisibleSelected ? [] : visibleIds)}
           />
-          <label htmlFor={selectAllId} className={toolbarStyles.selectedLabel}>
+          <label htmlFor={selectAllId} className={toolbarStyles.selectedLabel} role="status">
             <strong>{selected.length}</strong> selected
           </label>
         </div>
@@ -349,51 +358,23 @@ export default function EnrollmentReporting() {
           <button
             type="button"
             className={toolbarStyles.downloadMuted}
-            onClick={() =>
-              downloadSeparate(
-                selectedRows,
-                selectedRows.length === 1
-                  ? `Downloaded report for ${selectedRows[0].name}.`
-                  : `Downloaded ${selectedRows.length} reports.`,
-              )
-            }
+            onClick={() => setDownloadScope("selected")}
             disabled={selected.length === 0}
           >
             <DownloadIcon />
-            Download selected reports
+            Download selected
           </button>
           <button
             type="button"
             className={toolbarStyles.downloadAll}
-            onClick={() => downloadCombined(selectedRows)}
-            disabled={selected.length < 2}
-          >
-            <CombineIcon />
-            Combine selected
-          </button>
-          <button
-            type="button"
-            className={toolbarStyles.downloadAll}
-            onClick={() =>
-              downloadSeparate(
-                visibleRows,
-                visibleRows.length === 1
-                  ? `Downloaded report for ${visibleRows[0].name}.`
-                  : `Downloaded ${visibleRows.length} reports.`,
-              )
-            }
+            onClick={() => setDownloadScope("all")}
             disabled={visibleRows.length === 0}
           >
             <DownloadIcon />
-            Download all reports
+            Download all
           </button>
         </div>
       </div>
-        {selected.length > 1 ? (
-          <p className={styles.mergeHint} role="status">
-            Combine selected merges these reports into one file. Download selected saves each report separately.
-          </p>
-        ) : null}
       </div>
 
       <div className={tableStyles.tableWrap}>
@@ -504,7 +485,10 @@ export default function EnrollmentReporting() {
                     <button
                       type="button"
                       className={toolbarStyles.downloadAll}
-                      onClick={() => downloadSeparate([row], `Downloaded report for ${row.name}.`)}
+                      onClick={() => {
+                        downloadReport(reportFilename([row], false), row.enrollments, catalog);
+                        setToast(`Downloaded report for ${row.name}.`);
+                      }}
                     >
                       <DownloadIcon />
                       Download report
@@ -516,6 +500,14 @@ export default function EnrollmentReporting() {
           </tbody>
         </table>
       </div>
+
+      {downloadScope ? (
+        <DownloadReportDialog
+          summary={selectionSummary}
+          onCancel={closeDownloadDialog}
+          onDownload={handleDownload}
+        />
+      ) : null}
 
       {toast ? <Toast message={toast} onDismiss={() => setToast(null)} /> : null}
     </div>

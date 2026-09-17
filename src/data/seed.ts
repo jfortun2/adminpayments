@@ -49,12 +49,12 @@ export const templates: Template[] = [
 ];
 
 export const sections: CourseSection[] = [
-  { id: "gardening-fall-26", name: "Gardening 101", templateId: "intro-to-gardening", institutionId: "asu" },
-  { id: "gardening-summer-26", name: "Intro to Gardening — Summer", templateId: "intro-to-gardening", institutionId: "cmu" },
-  { id: "coffee-101-section", name: "Coffee 101", templateId: "coffee-101", institutionId: "cmu" },
-  { id: "coffee-asu", name: "Coffee 101 ASU", templateId: "coffee-101", institutionId: "asu" },
-  { id: "bio-section-a", name: "Biology A", templateId: "intro-biology", institutionId: "asu" },
-  { id: "stats-osu", name: "Statistics Foundations", templateId: "stats-foundations", institutionId: "osu" },
+  { id: "gardening-fall-26", name: "Gardening 101", templateId: "intro-to-gardening", institutionId: "asu", instructorId: "hal" },
+  { id: "gardening-summer-26", name: "Intro to Gardening — Summer", templateId: "intro-to-gardening", institutionId: "cmu", instructorId: "mia" },
+  { id: "coffee-101-section", name: "Coffee 101", templateId: "coffee-101", institutionId: "cmu", instructorId: "jessica" },
+  { id: "coffee-asu", name: "Coffee 101 ASU", templateId: "coffee-101", institutionId: "asu", instructorId: "hal" },
+  { id: "bio-section-a", name: "Biology A", templateId: "intro-biology", institutionId: "asu", instructorId: "mia" },
+  { id: "stats-osu", name: "Statistics Foundations", templateId: "stats-foundations", institutionId: "osu", instructorId: "jessica" },
 ];
 
 function batch(

@@ -174,13 +174,6 @@
   background: var(--row-selected);
 }
 
-.mergeHint {
-  margin: 0;
-  color: var(--text-low);
-  font-size: 14px;
-  line-height: 20px;
-}
-
 .identityWide {
   min-width: 160px;
 }

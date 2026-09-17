@@ -1,4 +1,4 @@
-import { downloadCsv, formatDateTime, slugify, toTimestamp } from "./helpers";
+import { downloadCsv, downloadZip, slugify, toCsv, toTimestamp, formatDateTime } from "./helpers";
 import type {
   CourseSection,
   Enrollment,
@@ -17,6 +17,8 @@ export const REPORT_GROUP_OPTIONS: { value: ReportGroupBy; label: string }[] = [
   { value: "publisher", label: "Publisher" },
 ];
 
+export type ReportDownloadFormat = "combined" | "zip";
+
 export interface ReportRow {
   id: string;
   name: string;
@@ -24,6 +26,10 @@ export interface ReportRow {
   templateName?: string;
   templateId?: string;
   institutionName?: string;
+  institutionId?: string;
+  publisherId?: string;
+  publisherName?: string;
+  instructorName?: string;
   validPaid: number;
   grace: number;
   unpaid: number;
@@ -108,6 +114,8 @@ export function buildReportRows(
       const section = catalog.sections.find((item) => item.id === id);
       const template = catalog.templates.find((item) => item.id === section?.templateId);
       const institution = catalog.institutions.find((item) => item.id === section?.institutionId);
+      const publisher = catalog.publishers.find((item) => item.id === template?.publisherId);
+      const instructor = catalog.people.find((item) => item.id === section?.instructorId);
       return {
         id,
         name: section?.name ?? "Unknown section",
@@ -115,6 +123,10 @@ export function buildReportRows(
         templateName: template?.name,
         templateId: template?.id,
         institutionName: institution?.name,
+        institutionId: institution?.id,
+        publisherId: publisher?.id,
+        publisherName: publisher?.name,
+        instructorName: instructor?.name,
         ...metrics,
       };
     }
@@ -144,13 +156,87 @@ export function buildReportRows(
   });
 }
 
+export function sectionRowsFromReports(rows: ReportRow[], catalog: ReportingCatalog): ReportRow[] {
+  return buildReportRows(
+    rows.flatMap((row) => row.enrollments),
+    "section",
+    catalog,
+  );
+}
+
 export function matchesReportQuery(row: ReportRow, query: string): boolean {
   if (query === "") return true;
-  const haystack = [row.name, row.subtitle, row.templateName, row.templateId, row.institutionName]
+  const haystack = [
+    row.name,
+    row.subtitle,
+    row.templateName,
+    row.templateId,
+    row.institutionName,
+    row.publisherName,
+    row.instructorName,
+  ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return haystack.includes(query);
+}
+
+export function pluralize(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+export function summarizeSelection(selectedRows: ReportRow[], visibleRows: ReportRow[]): string {
+  const count = selectedRows.length;
+  if (count === 0) return "";
+
+  const selectedIds = new Set(selectedRows.map((row) => row.id));
+  const selectedTemplateIds = [...new Set(selectedRows.map((row) => row.templateId).filter(Boolean))];
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every((row) => selectedIds.has(row.id));
+
+  function allVisibleMatching(
+    predicate: (row: ReportRow) => boolean,
+    name: string | undefined,
+  ): string | null {
+    if (!name) return null;
+    const matching = visibleRows.filter(predicate);
+    if (matching.length === 0 || matching.length !== count) return null;
+    if (!matching.every((row) => selectedIds.has(row.id))) return null;
+    return `Includes all ${pluralize(count, "section")} in ${name}`;
+  }
+
+  if (selectedTemplateIds.length === 1) {
+    const templateId = selectedTemplateIds[0];
+    const templateName = selectedRows[0]?.templateName ?? "this template";
+    const complete = allVisibleMatching((row) => row.templateId === templateId, templateName);
+    if (complete) return complete;
+    return `Includes ${pluralize(count, "section")} in ${templateName}`;
+  }
+
+  const institutionId = selectedRows[0]?.institutionId;
+  const sameInstitution = Boolean(institutionId) && selectedRows.every((row) => row.institutionId === institutionId);
+  if (sameInstitution) {
+    const complete = allVisibleMatching(
+      (row) => row.institutionId === institutionId,
+      selectedRows[0]?.institutionName,
+    );
+    if (complete) return complete;
+  }
+
+  const publisherId = selectedRows[0]?.publisherId;
+  const samePublisher = Boolean(publisherId) && selectedRows.every((row) => row.publisherId === publisherId);
+  if (samePublisher) {
+    const complete = allVisibleMatching(
+      (row) => row.publisherId === publisherId,
+      selectedRows[0]?.publisherName,
+    );
+    if (complete) return complete;
+  }
+
+  if (allVisibleSelected) {
+    return `Includes all ${pluralize(count, "section")}`;
+  }
+
+  return `Includes ${pluralize(count, "section")} across ${pluralize(selectedTemplateIds.length, "template")}`;
 }
 
 function statusLabel(status: Enrollment["status"]): string {
@@ -167,7 +253,12 @@ function methodLabel(enrollment: Enrollment): string {
 
 export function enrollmentCsvRows(enrollments: Enrollment[], catalog: ReportingCatalog): string[][] {
   const personName = (id: string) => catalog.people.find((person) => person.id === id)?.name ?? "";
-  const sectionName = (id: string) => catalog.sections.find((item) => item.id === id)?.name ?? "";
+  const section = (id: string) => catalog.sections.find((item) => item.id === id);
+  const sectionName = (id: string) => section(id)?.name ?? "";
+  const instructorName = (id: string) => {
+    const instructorId = section(id)?.instructorId;
+    return instructorId ? personName(instructorId) : "";
+  };
   const templateName = (id: string) => catalog.templates.find((item) => item.id === id)?.name ?? "";
   const institutionName = (id: string) => catalog.institutions.find((item) => item.id === id)?.name ?? "";
   const publisherName = (id: string) => catalog.publishers.find((item) => item.id === id)?.name ?? "";
@@ -177,11 +268,12 @@ export function enrollmentCsvRows(enrollments: Enrollment[], catalog: ReportingC
 
   return [
     [
-      "Student",
-      "Course section",
-      "Section ID",
       "Template",
       "Template ID",
+      "Section name",
+      "Section ID",
+      "Instructor",
+      "Student",
       "Institution",
       "Publisher",
       "Status",
@@ -190,11 +282,12 @@ export function enrollmentCsvRows(enrollments: Enrollment[], catalog: ReportingC
       "Payment code",
     ],
     ...sorted.map((enrollment) => [
-      personName(enrollment.studentId),
-      sectionName(enrollment.sectionId),
-      enrollment.sectionId,
       templateName(enrollment.templateId),
       enrollment.templateId,
+      sectionName(enrollment.sectionId),
+      enrollment.sectionId,
+      instructorName(enrollment.sectionId),
+      personName(enrollment.studentId),
       institutionName(enrollment.institutionId),
       publisherName(enrollment.publisherId),
       statusLabel(enrollment.status),
@@ -217,4 +310,40 @@ export function reportFilename(rows: ReportRow[], combined: boolean): string {
     return "enrollment-report-combined.csv";
   }
   return "enrollment-report-all.csv";
+}
+
+function uniqueReportFilenames(rows: ReportRow[]): { row: ReportRow; name: string }[] {
+  const used = new Set<string>();
+  return rows.map((row) => {
+    let name = reportFilename([row], false);
+    if (used.has(name)) {
+      name = `enrollment-report-${slugify(row.name) || "section"}-${row.id}.csv`;
+    }
+    used.add(name);
+    return { row, name };
+  });
+}
+
+export function downloadSelectedReports(
+  rows: ReportRow[],
+  format: ReportDownloadFormat,
+  catalog: ReportingCatalog,
+) {
+  const sectionRows = sectionRowsFromReports(rows, catalog);
+  if (format === "zip") {
+    downloadZip(
+      "enrollment-reports.zip",
+      uniqueReportFilenames(sectionRows).map(({ row, name }) => ({
+        name,
+        content: toCsv(enrollmentCsvRows(row.enrollments, catalog)),
+      })),
+    );
+    return;
+  }
+
+  downloadReport(
+    reportFilename(rows, true),
+    rows.flatMap((row) => row.enrollments),
+    catalog,
+  );
 }

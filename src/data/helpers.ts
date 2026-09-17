@@ -61,8 +61,8 @@ export function parseCodeCount(value: string): number | null {
   return parsed;
 }
 
-export function downloadCsv(filename: string, rows: string[][]): void {
-  const csv = rows
+export function toCsv(rows: string[][]): string {
+  return rows
     .map((row) =>
       row
         .map((cell) => {
@@ -72,7 +72,9 @@ export function downloadCsv(filename: string, rows: string[][]): void {
         .join(","),
     )
     .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+}
+
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -81,6 +83,120 @@ export function downloadCsv(filename: string, rows: string[][]): void {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export function downloadCsv(filename: string, rows: string[][]): void {
+  downloadBlob(filename, new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8;" }));
+}
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let index = 0; index < 256; index += 1) {
+    let crc = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+    }
+    table[index] = crc >>> 0;
+  }
+  return table;
+})();
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let index = 0; index < data.length; index += 1) {
+    crc = CRC32_TABLE[(crc ^ data[index]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  parts.forEach((part) => {
+    output.set(part, offset);
+    offset += part.length;
+  });
+  return output;
+}
+
+function u16(value: number): Uint8Array {
+  const bytes = new Uint8Array(2);
+  new DataView(bytes.buffer).setUint16(0, value, true);
+  return bytes;
+}
+
+function u32(value: number): Uint8Array {
+  const bytes = new Uint8Array(4);
+  new DataView(bytes.buffer).setUint32(0, value, true);
+  return bytes;
+}
+
+export function downloadZip(filename: string, files: { name: string; content: string }[]): void {
+  const encoder = new TextEncoder();
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let offset = 0;
+
+  files.forEach((file) => {
+    const nameBytes = encoder.encode(file.name);
+    const data = encoder.encode(file.content);
+    const checksum = crc32(data);
+    const localHeader = concatBytes([
+      u32(0x04034b50),
+      u16(20),
+      u16(0x0800),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(checksum),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      nameBytes,
+      data,
+    ]);
+    const centralHeader = concatBytes([
+      u32(0x02014b50),
+      u16(20),
+      u16(20),
+      u16(0x0800),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(checksum),
+      u32(data.length),
+      u32(data.length),
+      u16(nameBytes.length),
+      u16(0),
+      u16(0),
+      u16(0),
+      u16(0),
+      u32(0),
+      u32(offset),
+      nameBytes,
+    ]);
+    localParts.push(localHeader);
+    centralParts.push(centralHeader);
+    offset += localHeader.length;
+  });
+
+  const centralDirectory = concatBytes(centralParts);
+  const zip = concatBytes([
+    ...localParts,
+    centralDirectory,
+    u32(0x06054b50),
+    u16(0),
+    u16(0),
+    u16(files.length),
+    u16(files.length),
+    u32(centralDirectory.length),
+    u32(offset),
+    u16(0),
+  ]);
+
+  downloadBlob(filename, new Blob([zip.buffer as ArrayBuffer], { type: "application/zip" }));
 }
 
 export function slugify(value: string): string {
