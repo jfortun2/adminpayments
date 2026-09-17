@@ -1,0 +1,69 @@
+.section {
+  display: grid;
+  grid-template-columns: minmax(220px, 427px) minmax(280px, 1fr);
+  gap: 0 24px;
+  padding: 20px 0 21px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.copy h2 {
+  margin: 0;
+  color: #373a44;
+  font-size: 20px;
+  line-height: 30px;
+  font-weight: 400;
+}
+
+.copy p {
+  margin: 0;
+  color: #737373;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 11px;
+  color: #3b76d3;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #275caf;
+  color: white;
+  font-size: 14px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
+.externalIcon {
+  width: 16px;
+  height: 16px;
+  color: #3b76d3;
+}
+
+@media (max-width: 800px) {
+  .section {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}

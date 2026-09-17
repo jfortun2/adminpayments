@@ -1,0 +1,112 @@
+.shell {
+  display: grid;
+  grid-template-columns: 202px 1fr;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: #373a44;
+}
+
+.sidebar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 12px 8px 8px 5px;
+}
+
+.logoMark {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #7ed0c8, #2aa89a 55%, #0e7c74);
+}
+
+.logoText {
+  font-size: 16px;
+  font-weight: 700;
+  color: #353740;
+}
+
+.collapse {
+  position: absolute;
+  top: 16px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.collapse img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  transform: rotate(180deg);
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding: 8px 0 16px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 56px;
+  padding: 8px 16px 8px 32px;
+  background: white;
+  border-bottom: 1px solid #f3f4f8;
+  box-shadow: var(--shadow-surface);
+}
+
+.avatar {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border: 2px solid var(--border-default);
+  border-radius: 999px;
+}
+
+.avatar img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+}
+
+.main {
+  padding: 32px 48px 80px;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    padding: 24px 16px 48px;
+  }
+}

@@ -149,7 +149,7 @@ export default function TemplatePaymentsPage() {
   return (
     <div className={styles.page}>
       <nav className={styles.breadcrumb} aria-label="Breadcrumb">
-        <Link to="/">Template overview</Link>
+        <Link to={`/templates/${templateId}`}>Template overview</Link>
         <ChevronIcon className={styles.crumbChevron} />
         <span aria-current="page">Manage Template Payments</span>
       </nav>

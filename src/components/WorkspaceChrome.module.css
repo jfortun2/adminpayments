@@ -83,25 +83,26 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  padding: 16px 12px;
+  padding: 8px 0 16px;
   background: white;
   border-right: 1px solid #edf0f5;
 }
 
 .sectionLabel {
-  margin: 8px 12px 8px;
-  font-size: 11px;
+  margin: 24px 0 8px;
+  padding: 0 18px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.14px;
   text-transform: uppercase;
-  color: #9aa0ad;
+  color: #353740;
 }
 
-.workspaceNav,
 .projectNav {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 0 18px;
 }
 
 .navItem {
@@ -113,11 +114,6 @@
   color: #4b5160;
   font-size: 14px;
   font-weight: 600;
-}
-
-.navItemActive {
-  background: #f4cfff;
-  color: #2d1638;
 }
 
 .subNavActive {

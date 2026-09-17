@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { EyeIcon } from "../components/Icons";
 import WorkspaceChrome, {
   ActionLink,
@@ -10,15 +11,14 @@ import WorkspaceChrome, {
 import { usePayments } from "../context/PaymentsContext";
 import styles from "./TemplateOverviewPage.module.css";
 
-const TEMPLATE_ID = "intro-to-gardening";
-
 export default function TemplateOverviewPage() {
+  const { templateId = "intro-to-gardening" } = useParams();
   const { templates } = usePayments();
-  const template = templates.find((item) => item.id === TEMPLATE_ID);
+  const template = templates.find((item) => item.id === templateId);
   const [notesOn, setNotesOn] = useState(true);
   const [discussionsOn, setDiscussionsOn] = useState(true);
 
-  const paymentsPath = `/templates/${TEMPLATE_ID}/payments`;
+  const paymentsPath = `/templates/${templateId}/payments`;
 
   const title = template?.name ?? "Intro to Gardening";
 
@@ -28,7 +28,7 @@ export default function TemplateOverviewPage() {
   );
 
   return (
-    <WorkspaceChrome title={title}>
+    <WorkspaceChrome title={title} authorPath={`/templates/${templateId}`}>
       <OverviewRow
         title="Notes"
         description="Enable students to annotate content for saving and sharing within the class community."

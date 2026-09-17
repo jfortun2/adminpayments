@@ -17,7 +17,7 @@ function parseList(value: string | null): string[] {
 }
 
 export default function BatchCodesPage() {
-  const { templateId = "", batchId = "" } = useParams();
+  const { templateId, batchId = "" } = useParams();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { templates, batches, codes, people, sections, deactivateCode } = usePayments();
@@ -25,10 +25,14 @@ export default function BatchCodesPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [pendingCodeId, setPendingCodeId] = useState<string | null>(null);
 
-  const template = templates.find((item) => item.id === templateId);
   const batch = batches.find((item) => item.id === batchId);
+  const template = templates.find((item) => item.id === (templateId ?? batch?.templateId));
+  const isGlobal = !templateId;
   const listSearch = (location.state as { listSearch?: string } | null)?.listSearch;
-  const backTo = `/templates/${templateId}/payments${listSearch ? `?${listSearch}` : ""}`;
+  const backTo = isGlobal
+    ? `/payments${listSearch ? `?${listSearch}` : ""}`
+    : `/templates/${templateId}/payments${listSearch ? `?${listSearch}` : ""}`;
+  const backLabel = isGlobal ? "Return to all batches" : "Return to template batches";
 
   const search = searchParams.get("q") ?? "";
   const status = parseList(searchParams.get("status")) as CodeStatus[];
@@ -142,11 +146,11 @@ export default function BatchCodesPage() {
     setToast(message);
   }
 
-  if (!template || !batch) {
+  if (!batch || (!isGlobal && !template)) {
     return (
       <div className={styles.page}>
         <p>Batch not found.</p>
-        <Link to={backTo}>Return to template batches</Link>
+        <Link to={backTo}>{backLabel}</Link>
       </div>
     );
   }
@@ -155,7 +159,7 @@ export default function BatchCodesPage() {
     <div className={styles.page}>
       <Link className={styles.backLink} to={backTo}>
         <BackIcon />
-        Return to template batches
+        {backLabel}
       </Link>
       <h1 className={styles.title}>Batch: {batch.name}</h1>
 

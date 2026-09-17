@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { WorkspaceNav, WorkspaceSupport } from "./WorkspaceSwitcher";
 import styles from "./WorkspaceChrome.module.css";
 
 interface WorkspaceChromeProps {
   title: string;
+  authorPath?: string;
   children: ReactNode;
 }
 
-export default function WorkspaceChrome({ title, children }: WorkspaceChromeProps) {
+export default function WorkspaceChrome({ title, authorPath, children }: WorkspaceChromeProps) {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -26,12 +28,7 @@ export default function WorkspaceChrome({ title, children }: WorkspaceChromeProp
       </header>
       <div className={styles.body}>
         <aside className={styles.sidebar} aria-label="Workspace">
-          <p className={styles.sectionLabel}>Workspace</p>
-          <nav className={styles.workspaceNav}>
-            <span className={`${styles.navItem} ${styles.navItemActive}`}>Course Author</span>
-            <span className={styles.navItem}>Instructor</span>
-            <span className={styles.navItem}>Student</span>
-          </nav>
+          <WorkspaceNav active="author" authorTo={authorPath} />
           <p className={styles.sectionLabel}>{title}</p>
           <nav className={styles.projectNav} aria-label="Project">
             <span className={styles.navItem}>Overview</span>
@@ -41,7 +38,7 @@ export default function WorkspaceChrome({ title, children }: WorkspaceChromeProp
             <span className={styles.navItem}>Improve</span>
           </nav>
           <div className={styles.sidebarFooter}>
-            <span className={styles.navItem}>Support</span>
+            <WorkspaceSupport />
             <button type="button" className={styles.exit}>
               ← Exit Project
             </button>

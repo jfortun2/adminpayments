@@ -1,0 +1,87 @@
+.sectionLabel {
+  margin: 16px 0 10px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.14px;
+  text-transform: uppercase;
+  color: #353740;
+}
+
+.workspaceNav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 18px;
+}
+
+.workspaceItem,
+.supportItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 165px;
+  min-height: 35px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #757682;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspaceItem:hover,
+.supportItem:hover {
+  text-decoration: none;
+}
+
+.workspaceItemActive {
+  background: #fbd2ab;
+  color: #353740;
+}
+
+.workspaceIcon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.workspaceIcon img {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.supportItem {
+  width: 190px;
+  padding: 12px 20px;
+}
+
+.supportIcon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.supportIconLeaf {
+  position: absolute;
+  inset: 12.5%;
+}
+
+.supportIconLeaf img {
+  position: absolute;
+  top: -5%;
+  left: -5%;
+  display: block;
+  width: 16.5px;
+  height: 16.5px;
+  max-width: none;
+}
