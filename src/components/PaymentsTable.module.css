@@ -195,3 +195,21 @@
   width: 147px;
   text-align: center;
 }
+
+.downloadCell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.idMeta {
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.metric {
+  font-weight: 500;
+  white-space: nowrap;
+}

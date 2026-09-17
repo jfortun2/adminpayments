@@ -61,6 +61,30 @@ export function DownloadIcon({ className }: IconProps) {
   );
 }
 
+export function CombineIcon({ className }: IconProps) {
+  return (
+    <svg className={className} width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3 4h4M3 8h10M3 12h4M7 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function CalendarIcon({ className }: IconProps) {
+  return (
+    <svg className={className} width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2.5 6.5h11" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M5.5 2v2.5M10.5 2v2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function BackIcon({ className }: IconProps) {
   return (
     <svg className={className} width={20} height={20} viewBox="0 0 20 20" fill="none" aria-hidden="true">

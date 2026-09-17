@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
+import EnrollmentReporting from "../components/EnrollmentReporting";
 import { ChevronDownIcon, ChevronIcon, ChevronUpIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
@@ -168,9 +169,7 @@ export default function GlobalPaymentsPage() {
       </div>
 
       {tab === "reporting" ? (
-        <p className={styles.placeholder}>
-          Paid enrollment activity across templates will appear here.
-        </p>
+        <EnrollmentReporting />
       ) : (
         <>
           <PaymentsToolbar

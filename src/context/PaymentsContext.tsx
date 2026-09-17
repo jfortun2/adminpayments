@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { generatePaymentCode, slugify, todayIso } from "../data/helpers";
-import { CURRENT_USER_ID, people, sections, seedBatches, seedCodes, templates } from "../data/seed";
+import { CURRENT_USER_ID, institutions, people, publishers, sections, seedBatches, seedCodes, seedEnrollments, templates } from "../data/seed";
 import type { PaymentBatch, PaymentCode, PaymentsState } from "../data/types";
 
 interface PaymentsContextValue extends PaymentsState {
@@ -58,10 +58,13 @@ function reducer(state: PaymentsState, action: Action): PaymentsState {
 export function PaymentsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, {
     people,
+    institutions,
+    publishers,
     templates,
     sections,
     batches: seedBatches,
     codes: seedCodes,
+    enrollments: seedEnrollments,
   });
 
   const value = useMemo<PaymentsContextValue>(

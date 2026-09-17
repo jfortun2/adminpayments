@@ -7,6 +7,25 @@ export function formatDate(iso: string): string {
   });
 }
 
+export function formatDateTime(value: string): string {
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
+export function toTimestamp(value: string): number {
+  return new Date(value.includes("T") ? value : `${value}T00:00:00`).getTime();
+}
+
 export function todayIso(): string {
   const now = new Date();
   const year = now.getFullYear();
