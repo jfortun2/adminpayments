@@ -100,7 +100,7 @@ export function downloadCsvOrZip(
     combinedFilename: string;
     zipFilename: string;
     headers: string[];
-    items: { filename: string; values: string[] }[];
+    items: { filename: string; rows: string[][] }[];
   },
 ) {
   if (format === "zip") {
@@ -113,13 +113,13 @@ export function downloadCsvOrZip(
           name = name.replace(/\.csv$/, `-${index + 1}.csv`);
         }
         used.add(name);
-        return { name, content: toCsv([headers, item.values]) };
+        return { name, content: toCsv([headers, ...item.rows]) };
       }),
     );
     return;
   }
 
-  downloadCsv(combinedFilename, [headers, ...items.map((item) => item.values)]);
+  downloadCsv(combinedFilename, [headers, ...items.flatMap((item) => item.rows)]);
 }
 
 const CRC32_TABLE = (() => {

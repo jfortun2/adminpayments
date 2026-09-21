@@ -8,7 +8,13 @@ import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
+import {
+  batchCodeDownloadSummary,
+  batchCodeDownloadToast,
+  codesInBatches,
+  downloadCodesForBatches,
+} from "../data/codeExport";
+import { formatDate } from "../data/helpers";
 import type { ReportDownloadFormat } from "../data/reporting";
 import type { BatchStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
@@ -22,7 +28,7 @@ function parseList(value: string | null): string[] {
 export default function GlobalPaymentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { templates, batches, codes, people, deactivateBatch, reactivateBatch } = usePayments();
+  const { templates, batches, codes, people, sections, deactivateBatch, reactivateBatch } = usePayments();
   const [selected, setSelected] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; batchId: string } | null>(
@@ -128,31 +134,18 @@ export default function GlobalPaymentsPage() {
   }
 
   function downloadBatches(rows: typeof visibleBatches, format: ReportDownloadFormat) {
-    const noun = rows.length === 1 ? "batch" : "batches";
-    downloadCsvOrZip(format, {
-      combinedFilename: downloadScope === "all" ? "payment-batches.csv" : "payment-batches-selected.csv",
-      zipFilename: downloadScope === "all" ? "payment-batches.zip" : "payment-batches-selected.zip",
-      headers: ["Batch Name", "Template", "Created", "Created by", "Status"],
-      items: rows.map((batch) => ({
-        filename: slugify(batch.name) || batch.id,
-        values: [
-          batch.name,
-          templates.find((item) => item.id === batch.templateId)?.name ?? "",
-          formatDate(batch.createdAt),
-          getPersonName(people, batch.createdById),
-          batch.status === "active" ? "Active" : "Deactivated",
-        ],
-      })),
+    const codeCount = codesInBatches(codes, rows).length;
+    downloadCodesForBatches(format, rows, codes, { templates, people, sections }, {
+      combinedFilename: downloadScope === "all" ? "payment-codes.csv" : "payment-codes-selected.csv",
+      zipFilename: downloadScope === "all" ? "payment-codes.zip" : "payment-codes-selected.zip",
     });
-    setToast(
-      format === "zip"
-        ? `Downloaded ${rows.length} ${noun} as separate files.`
-        : `Downloaded ${rows.length} ${noun}.`,
-    );
+    setToast(batchCodeDownloadToast(format, rows.length, codeCount));
     setDownloadScope(null);
   }
 
-  const downloadRows = downloadScope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
+  const downloadRows =
+    downloadScope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
+  const downloadCodeCount = codesInBatches(codes, downloadRows).length;
 
   return (
     <div className={styles.page}>
@@ -375,10 +368,10 @@ export default function GlobalPaymentsPage() {
 
       {downloadScope ? (
         <DownloadReportDialog
-          title="Download payment batches"
-          summary={`Includes ${downloadRows.length} ${downloadRows.length === 1 ? "batch" : "batches"}${downloadScope === "all" ? " currently in view" : " selected"}.`}
-          combinedDescription="All selected batches will be included in one file."
-          separateDescription="A separate file will be created for each batch."
+          title="Download payment codes"
+          summary={batchCodeDownloadSummary(downloadRows, downloadCodeCount, downloadScope)}
+          combinedDescription="Every payment code from these batches will be included in one file, along with batch information."
+          separateDescription="A separate file will be created for each batch, containing all of its payment codes and batch information."
           onCancel={() => setDownloadScope(null)}
           onDownload={(format) => downloadBatches(downloadRows, format)}
         />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import DownloadReportDialog from "./DownloadReportDialog";
-import { CalendarIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon, SearchIcon } from "./Icons";
+import { CalendarIcon, ChevronDownIcon, ChevronUpIcon, ClearIcon, DownloadIcon, SearchIcon } from "./Icons";
 import tableStyles from "./PaymentsTable.module.css";
 import toolbarStyles from "./PaymentsToolbar.module.css";
 import Toast from "./Toast";
@@ -63,6 +63,7 @@ export default function EnrollmentReporting() {
   const sortKey = parseSortKey(searchParams.get("rsort"));
   const sortDir = (searchParams.get("rdir") as SortDirection) || "asc";
   const hasDateFilter = after !== "" || before !== "";
+  const hasActiveFilters = hasDateFilter || search.trim() !== "";
   const groupLabel = REPORT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label ?? "Course Section";
 
   const catalog = useMemo(
@@ -169,7 +170,7 @@ export default function EnrollmentReporting() {
   }, []);
 
   function handleDownload(format: ReportDownloadFormat) {
-    downloadSelectedReports(downloadRows, format, catalog);
+    downloadSelectedReports(downloadRows, format, catalog, groupBy);
     setToast(
       format === "zip"
         ? `Downloaded ${pluralize(downloadSectionRows.length, "section report")}.`
@@ -334,6 +335,18 @@ export default function EnrollmentReporting() {
                 </div>
               ) : null}
             </div>
+            <button
+              type="button"
+              className={toolbarStyles.toolButton}
+              onClick={() => {
+                updateParams({ rq: null, after: null, before: null });
+                setDateOpen(false);
+              }}
+              disabled={!hasActiveFilters}
+            >
+              <ClearIcon className={toolbarStyles.toolIcon} />
+              Clear All Filters
+            </button>
           </div>
         </div>
         </div>
@@ -486,7 +499,7 @@ export default function EnrollmentReporting() {
                       type="button"
                       className={toolbarStyles.downloadAll}
                       onClick={() => {
-                        downloadReport(reportFilename([row], false), row.enrollments, catalog);
+                        downloadReport(reportFilename([row], false), row.enrollments, catalog, groupBy);
                         setToast(`Downloaded report for ${row.name}.`);
                       }}
                     >

@@ -12,22 +12,22 @@ import type {
 export const CURRENT_USER_ID = "jessica";
 
 export const people: Person[] = [
-  { id: "hal", name: "Hal Turner", initials: "HT" },
-  { id: "mia", name: "Mia B", initials: "MB" },
-  { id: "jessica", name: "Jessica Fortunato", initials: "JF" },
-  { id: "joe", name: "Joe Smith", initials: "JS" },
-  { id: "priya", name: "Priya Nair", initials: "PN" },
-  { id: "omar", name: "Omar Alvarez", initials: "OA" },
-  { id: "alex", name: "Alex Chen", initials: "AC" },
-  { id: "sam", name: "Sam Ortiz", initials: "SO" },
-  { id: "rina", name: "Rina Patel", initials: "RP" },
-  { id: "devon", name: "Devon Blake", initials: "DB" },
-  { id: "nia", name: "Nia Brooks", initials: "NB" },
-  { id: "chris", name: "Chris Young", initials: "CY" },
-  { id: "lee", name: "Lee Park", initials: "LP" },
-  { id: "ana", name: "Ana Silva", initials: "AS" },
-  { id: "miles", name: "Miles Grant", initials: "MG" },
-  { id: "tara", name: "Tara Nguyen", initials: "TN" },
+  { id: "hal", name: "Hal Turner", initials: "HT", email: "hal@xyz.edu" },
+  { id: "mia", name: "Mia B", initials: "MB", email: "mia@xyz.edu" },
+  { id: "jessica", name: "Jessica Fortunato", initials: "JF", email: "jess@xyz.edu" },
+  { id: "joe", name: "Joe Smith", initials: "JS", email: "joe@xyz.edu" },
+  { id: "priya", name: "Priya Nair", initials: "PN", email: "priya@xyz.edu" },
+  { id: "omar", name: "Omar Alvarez", initials: "OA", email: "omar@xyz.edu" },
+  { id: "alex", name: "Alex Chen", initials: "AC", email: "alex@xyz.edu" },
+  { id: "sam", name: "Sam Ortiz", initials: "SO", email: "sam@xyz.edu" },
+  { id: "rina", name: "Rina Patel", initials: "RP", email: "rina@xyz.edu" },
+  { id: "devon", name: "Devon Blake", initials: "DB", email: "devon@xyz.edu" },
+  { id: "nia", name: "Nia Brooks", initials: "NB", email: "nia@xyz.edu" },
+  { id: "chris", name: "Chris Young", initials: "CY", email: "chris@xyz.edu" },
+  { id: "lee", name: "Lee Park", initials: "LP", email: "lee@xyz.edu" },
+  { id: "ana", name: "Ana Silva", initials: "AS", email: "ana@xyz.edu" },
+  { id: "miles", name: "Miles Grant", initials: "MG", email: "miles@xyz.edu" },
+  { id: "tara", name: "Tara Nguyen", initials: "TN", email: "tara@xyz.edu" },
 ];
 
 export const institutions: Institution[] = [
@@ -299,10 +299,16 @@ function enroll(
   sectionId: string,
   status: Enrollment["status"],
   enrolledAt: string,
-  extras: Pick<Enrollment, "paymentMethod" | "codeId"> = {},
+  extras: Pick<Enrollment, "paymentMethod" | "codeId" | "paymentStatus" | "paymentReference" | "paidAt"> = {},
 ): Enrollment {
   const section = sections.find((item) => item.id === sectionId);
   const template = templates.find((item) => item.id === section?.templateId);
+  const paymentStatus =
+    extras.paymentStatus ??
+    (extras.paymentMethod === "card" ? "complete" : extras.paymentMethod === "code" ? "paid" : undefined);
+  const paymentReference =
+    extras.paymentReference ??
+    (extras.paymentMethod === "card" ? `CASHNET-${id.replace(/\D/g, "").padStart(5, "0")}` : undefined);
   return {
     id,
     studentId,
@@ -312,7 +318,11 @@ function enroll(
     publisherId: template?.publisherId ?? "",
     status,
     enrolledAt,
-    ...extras,
+    paidAt: extras.paidAt ?? (paymentStatus ? enrolledAt : undefined),
+    paymentStatus,
+    paymentReference,
+    paymentMethod: extras.paymentMethod,
+    codeId: extras.codeId,
   };
 }
 
@@ -320,7 +330,7 @@ export const seedEnrollments: Enrollment[] = [
   enroll("e1", "joe", "gardening-fall-26", "valid_paid", "2026-08-29T09:12", { paymentMethod: "code", codeId: "c4" }),
   enroll("e2", "omar", "gardening-fall-26", "valid_paid", "2026-09-04T14:40", { paymentMethod: "code", codeId: "c8" }),
   enroll("e3", "priya", "gardening-fall-26", "valid_paid", "2026-02-02T11:05", { paymentMethod: "code", codeId: "c20" }),
-  enroll("e4", "alex", "gardening-fall-26", "valid_paid", "2026-08-30T16:22", { paymentMethod: "code" }),
+  enroll("e4", "alex", "gardening-fall-26", "valid_paid", "2026-08-30T16:22", { paymentStatus: "bypassed" }),
   enroll("e5", "sam", "gardening-fall-26", "valid_paid", "2026-09-01T10:18", { paymentMethod: "card" }),
   enroll("e6", "rina", "gardening-fall-26", "valid_paid", "2026-08-28T13:47", { paymentMethod: "card" }),
   enroll("e7", "devon", "gardening-fall-26", "valid_paid", "2026-09-03T08:05", { paymentMethod: "card" }),
@@ -338,7 +348,11 @@ export const seedEnrollments: Enrollment[] = [
 
   enroll("e18", "joe", "coffee-101-section", "valid_paid", "2026-07-01T09:15", { paymentMethod: "code", codeId: "c22" }),
   enroll("e19", "joe", "coffee-101-section", "valid_paid", "2026-08-27T10:41", { paymentMethod: "code", codeId: "c2" }),
-  enroll("e20", "priya", "coffee-101-section", "valid_paid", "2026-08-12T15:03", { paymentMethod: "code" }),
+  enroll("e20", "priya", "coffee-101-section", "valid_paid", "2026-08-12T15:03", {
+    paymentMethod: "code",
+    codeId: "c1",
+    paymentStatus: "bypassed",
+  }),
   enroll("e21", "rina", "coffee-101-section", "valid_paid", "2026-07-10T11:22", { paymentMethod: "card" }),
   enroll("e22", "devon", "coffee-101-section", "valid_paid", "2026-08-05T14:55", { paymentMethod: "card" }),
   enroll("e23", "nia", "coffee-101-section", "valid_paid", "2026-08-20T09:37", { paymentMethod: "card" }),
@@ -346,7 +360,7 @@ export const seedEnrollments: Enrollment[] = [
   enroll("e25", "lee", "coffee-101-section", "grace", "2026-08-24T16:40"),
   enroll("e26", "ana", "coffee-101-section", "unpaid", "2026-08-25T12:05"),
 
-  enroll("e27", "sam", "coffee-asu", "valid_paid", "2026-08-18T09:48", { paymentMethod: "code" }),
+  enroll("e27", "sam", "coffee-asu", "valid_paid", "2026-08-18T09:48", { paymentStatus: "bypassed" }),
   enroll("e28", "ana", "coffee-asu", "valid_paid", "2026-08-19T13:21", { paymentMethod: "card" }),
   enroll("e29", "miles", "coffee-asu", "valid_paid", "2026-08-21T10:09", { paymentMethod: "card" }),
   enroll("e30", "tara", "coffee-asu", "valid_paid", "2026-08-26T15:44", { paymentMethod: "card" }),
@@ -358,14 +372,14 @@ export const seedEnrollments: Enrollment[] = [
   enroll("e35", "nia", "bio-section-a", "valid_paid", "2026-07-26T10:13", { paymentMethod: "card" }),
   enroll("e36", "chris", "bio-section-a", "valid_paid", "2026-07-29T16:01", { paymentMethod: "card" }),
   enroll("e37", "lee", "bio-section-a", "valid_paid", "2026-08-03T09:42", { paymentMethod: "card" }),
-  enroll("e38", "ana", "bio-section-a", "valid_paid", "2026-08-08T13:36", { paymentMethod: "code" }),
+  enroll("e38", "ana", "bio-section-a", "valid_paid", "2026-08-08T13:36", { paymentStatus: "bypassed" }),
   enroll("e39", "miles", "bio-section-a", "grace", "2026-08-11T11:08"),
   enroll("e40", "tara", "bio-section-a", "unpaid", "2026-08-14T15:27"),
   enroll("e41", "sam", "bio-section-a", "unpaid", "2026-08-16T10:50"),
 
   enroll("e42", "alex", "stats-osu", "valid_paid", "2026-04-12T09:20", { paymentMethod: "card" }),
   enroll("e43", "rina", "stats-osu", "valid_paid", "2026-04-18T14:33", { paymentMethod: "card" }),
-  enroll("e44", "joe", "stats-osu", "valid_paid", "2026-04-22T11:47", { paymentMethod: "code" }),
+  enroll("e44", "joe", "stats-osu", "valid_paid", "2026-04-22T11:47", { paymentStatus: "bypassed" }),
   enroll("e45", "priya", "stats-osu", "valid_paid", "2026-05-02T08:16", { paymentMethod: "card" }),
   enroll("e46", "devon", "stats-osu", "grace", "2026-05-08T13:05"),
   enroll("e47", "nia", "stats-osu", "unpaid", "2026-05-14T10:29"),
