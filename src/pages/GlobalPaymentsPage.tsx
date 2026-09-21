@@ -14,7 +14,7 @@ import {
   codesInBatches,
   downloadCodesForBatches,
 } from "../data/codeExport";
-import { formatDate } from "../data/helpers";
+import { formatDate, matchingCodeCountsByBatch, matchingCodeLabel, withSearchQuery } from "../data/helpers";
 import type { ReportDownloadFormat } from "../data/reporting";
 import type { BatchStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
@@ -72,13 +72,10 @@ export default function GlobalPaymentsPage() {
     [batches, templates],
   );
 
+  const matchingCodeCounts = useMemo(() => matchingCodeCountsByBatch(codes, search), [codes, search]);
+
   const visibleBatches = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matchingBatchIdsFromCodes = new Set(
-      codes
-        .filter((item) => item.code.toLowerCase().includes(query))
-        .map((item) => item.batchId),
-    );
 
     const filtered = batches.filter((batch) => {
       const templateName = templates.find((item) => item.id === batch.templateId)?.name.toLowerCase() ?? "";
@@ -86,7 +83,7 @@ export default function GlobalPaymentsPage() {
         query === "" ||
         batch.name.toLowerCase().includes(query) ||
         templateName.includes(query) ||
-        matchingBatchIdsFromCodes.has(batch.id);
+        (matchingCodeCounts.get(batch.id) ?? 0) > 0;
       const matchesCreator = createdBy.length === 0 || createdBy.includes(batch.createdById);
       const matchesTemplate = templateFilter.length === 0 || templateFilter.includes(batch.templateId);
       const matchesStatus = status.length === 0 || status.includes(batch.status);
@@ -106,7 +103,7 @@ export default function GlobalPaymentsPage() {
       const result = valueOf(a) < valueOf(b) ? -1 : valueOf(a) > valueOf(b) ? 1 : 0;
       return sortDir === "asc" ? result : -result;
     });
-  }, [batches, codes, createdBy, people, search, sortDir, sortKey, status, templateFilter, templates]);
+  }, [batches, createdBy, matchingCodeCounts, people, search, sortDir, sortKey, status, templateFilter, templates]);
 
   const visibleIds = visibleBatches.map((batch) => batch.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
@@ -279,6 +276,7 @@ export default function GlobalPaymentsPage() {
                 ) : (
                   visibleBatches.map((batch) => {
                     const template = templates.find((item) => item.id === batch.templateId);
+                    const matchCount = matchingCodeCounts.get(batch.id) ?? 0;
                     return (
                       <tr
                         key={batch.id}
@@ -295,26 +293,33 @@ export default function GlobalPaymentsPage() {
                           />
                         </td>
                         <td>
-                          <button
-                            type="button"
-                            className={tableStyles.nameButton}
-                            onClick={() =>
-                              navigate(`/payments/batches/${batch.id}`, {
-                                state: { listSearch: searchParams.toString() },
-                              })
-                            }
-                          >
-                            {batch.name}
-                          </button>
+                          <div className={tableStyles.stacked}>
+                            <button
+                              type="button"
+                              className={tableStyles.nameButton}
+                              aria-label={
+                                matchCount > 0
+                                  ? `${batch.name}, ${matchingCodeLabel(matchCount)}`
+                                  : batch.name
+                              }
+                              onClick={() =>
+                                navigate(withSearchQuery(`/payments/batches/${batch.id}`, search), {
+                                  state: { listSearch: searchParams.toString() },
+                                })
+                              }
+                            >
+                              {batch.name}
+                            </button>
+                            {matchCount > 0 ? (
+                              <span className={tableStyles.matchMeta}>{matchingCodeLabel(matchCount)}</span>
+                            ) : null}
+                          </div>
                         </td>
                         <td>
                           {template ? (
-                            <div className={tableStyles.stacked}>
-                              <Link className={tableStyles.linkName} to={`/templates/${template.id}/payments`}>
-                                {template.name}
-                              </Link>
-                              <span className={tableStyles.templateMeta}>Template</span>
-                            </div>
+                            <Link className={tableStyles.linkName} to={`/templates/${template.id}/payments`}>
+                              {template.name}
+                            </Link>
                           ) : (
                             "--"
                           )}

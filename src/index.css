@@ -27,6 +27,9 @@
   --table-border: #ced1d9;
   --row-selected: #cfe3f8;
   --row-hover: #dde7f1;
+  --row-match: #fff3cd;
+  --row-match-hover: #ffe9a3;
+  --code-match: #ffe58a;
   --overlay: rgba(53, 55, 64, 0.33);
   --shadow-button: 0 2px 4px rgba(0, 52, 99, 0.1);
   --shadow-toolbar: 0 2px 6.1px rgba(0, 0, 0, 0.1);

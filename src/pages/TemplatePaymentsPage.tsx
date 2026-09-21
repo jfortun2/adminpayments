@@ -15,7 +15,7 @@ import {
   codesInBatches,
   downloadCodesForBatches,
 } from "../data/codeExport";
-import { formatDate, slugify } from "../data/helpers";
+import { formatDate, matchingCodeCountsByBatch, matchingCodeLabel, slugify, withSearchQuery } from "../data/helpers";
 import type { ReportDownloadFormat } from "../data/reporting";
 import type { BatchStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
@@ -73,19 +73,16 @@ export default function TemplatePaymentsPage() {
     return ids.map((id) => ({ value: id, label: getPersonName(people, id) }));
   }, [people, templateBatches]);
 
+  const matchingCodeCounts = useMemo(() => matchingCodeCountsByBatch(codes, search), [codes, search]);
+
   const visibleBatches = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matchingBatchIdsFromCodes = new Set(
-      codes
-        .filter((item) => item.code.toLowerCase().includes(query))
-        .map((item) => item.batchId),
-    );
 
     const filtered = templateBatches.filter((batch) => {
       const matchesQuery =
         query === "" ||
         batch.name.toLowerCase().includes(query) ||
-        matchingBatchIdsFromCodes.has(batch.id);
+        (matchingCodeCounts.get(batch.id) ?? 0) > 0;
       const matchesCreator = createdBy.length === 0 || createdBy.includes(batch.createdById);
       const matchesStatus = status.length === 0 || status.includes(batch.status);
       return matchesQuery && matchesCreator && matchesStatus;
@@ -109,7 +106,7 @@ export default function TemplatePaymentsPage() {
     });
 
     return sorted;
-  }, [codes, createdBy, people, search, sortDir, sortKey, status, templateBatches]);
+  }, [createdBy, matchingCodeCounts, people, search, sortDir, sortKey, status, templateBatches]);
 
   const visibleIds = visibleBatches.map((batch) => batch.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
@@ -261,57 +258,71 @@ export default function TemplatePaymentsPage() {
                 </td>
               </tr>
             ) : (
-              visibleBatches.map((batch) => (
-                <tr
-                  key={batch.id}
-                  data-selected={selected.includes(batch.id)}
-                  data-deactivated={batch.status === "deactivated"}
-                >
-                  <td className={tableStyles.checkCell}>
-                    <input
-                      className={tableStyles.checkbox}
-                      type="checkbox"
-                      checked={selected.includes(batch.id)}
-                      aria-label={`Select ${batch.name}`}
-                      onChange={() => toggleRow(batch.id)}
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className={tableStyles.nameButton}
-                      onClick={() =>
-                        navigate(`/templates/${templateId}/payments/batches/${batch.id}`, {
-                          state: { listSearch: searchParams.toString() },
-                        })
-                      }
-                    >
-                      {batch.name}
-                    </button>
-                  </td>
-                  <td>{formatDate(batch.createdAt)}</td>
-                  <td>{getPersonName(people, batch.createdById)}</td>
-                  <td className={tableStyles.actionsCell}>
-                    {batch.status === "active" ? (
-                      <button
-                        type="button"
-                        className={tableStyles.dangerButton}
-                        onClick={() => setPendingAction({ type: "deactivate", batchId: batch.id })}
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={tableStyles.reactivateButton}
-                        onClick={() => setPendingAction({ type: "reactivate", batchId: batch.id })}
-                      >
-                        Reactivate
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+              visibleBatches.map((batch) => {
+                const matchCount = matchingCodeCounts.get(batch.id) ?? 0;
+                return (
+                  <tr
+                    key={batch.id}
+                    data-selected={selected.includes(batch.id)}
+                    data-deactivated={batch.status === "deactivated"}
+                  >
+                    <td className={tableStyles.checkCell}>
+                      <input
+                        className={tableStyles.checkbox}
+                        type="checkbox"
+                        checked={selected.includes(batch.id)}
+                        aria-label={`Select ${batch.name}`}
+                        onChange={() => toggleRow(batch.id)}
+                      />
+                    </td>
+                    <td>
+                      <div className={tableStyles.stacked}>
+                        <button
+                          type="button"
+                          className={tableStyles.nameButton}
+                          aria-label={
+                            matchCount > 0 ? `${batch.name}, ${matchingCodeLabel(matchCount)}` : batch.name
+                          }
+                          onClick={() =>
+                            navigate(
+                              withSearchQuery(`/templates/${templateId}/payments/batches/${batch.id}`, search),
+                              {
+                                state: { listSearch: searchParams.toString() },
+                              },
+                            )
+                          }
+                        >
+                          {batch.name}
+                        </button>
+                        {matchCount > 0 ? (
+                          <span className={tableStyles.matchMeta}>{matchingCodeLabel(matchCount)}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>{formatDate(batch.createdAt)}</td>
+                    <td>{getPersonName(people, batch.createdById)}</td>
+                    <td className={tableStyles.actionsCell}>
+                      {batch.status === "active" ? (
+                        <button
+                          type="button"
+                          className={tableStyles.dangerButton}
+                          onClick={() => setPendingAction({ type: "deactivate", batchId: batch.id })}
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={tableStyles.reactivateButton}
+                          onClick={() => setPendingAction({ type: "reactivate", batchId: batch.id })}
+                        >
+                          Reactivate
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

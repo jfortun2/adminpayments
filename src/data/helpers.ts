@@ -22,6 +22,34 @@ export function formatCount(value: number): string {
   return value.toLocaleString("en-US");
 }
 
+export function paymentCodeMatchesQuery(code: string, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  return normalized !== "" && code.toLowerCase().includes(normalized);
+}
+
+export function matchingCodeCountsByBatch(
+  codes: { batchId: string; code: string }[],
+  query: string,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  if (!query.trim()) return counts;
+  codes.forEach((item) => {
+    if (paymentCodeMatchesQuery(item.code, query)) {
+      counts.set(item.batchId, (counts.get(item.batchId) ?? 0) + 1);
+    }
+  });
+  return counts;
+}
+
+export function matchingCodeLabel(count: number): string {
+  return count === 1 ? "1 matching code" : `${count.toLocaleString()} matching codes`;
+}
+
+export function withSearchQuery(path: string, query: string): string {
+  const trimmed = query.trim();
+  return trimmed ? `${path}?q=${encodeURIComponent(trimmed)}` : path;
+}
+
 export function toTimestamp(value: string): number {
   return new Date(value.includes("T") ? value : `${value}T00:00:00`).getTime();
 }
