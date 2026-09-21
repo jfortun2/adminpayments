@@ -11,10 +11,10 @@ import type {
 } from "./types";
 
 export const REPORT_GROUP_OPTIONS: { value: ReportGroupBy; label: string }[] = [
-  { value: "section", label: "Course Section" },
-  { value: "template", label: "Template" },
-  { value: "institution", label: "Institution" },
-  { value: "publisher", label: "Publisher" },
+  { value: "section", label: "Course sections" },
+  { value: "template", label: "Templates" },
+  { value: "institution", label: "Institutions" },
+  { value: "publisher", label: "Publishers" },
 ];
 
 export type ReportDownloadFormat = "combined" | "zip";
@@ -404,7 +404,7 @@ export function downloadSelectedReports(
   }
 
   downloadReport(
-    reportFilename(rows, true),
+    reportFilename(rows, rows.length !== 1),
     rows.flatMap((row) => row.enrollments),
     catalog,
     groupBy,

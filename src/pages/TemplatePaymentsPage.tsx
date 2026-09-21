@@ -135,15 +135,28 @@ export default function TemplatePaymentsPage() {
     );
   }
 
-  function downloadBatches(rows: typeof visibleBatches, format: ReportDownloadFormat) {
+  function downloadBatches(
+    rows: typeof visibleBatches,
+    format: ReportDownloadFormat,
+    scope: "selected" | "all",
+  ) {
     const prefix = slugify(template?.name ?? "template") || "template";
     const codeCount = codesInBatches(codes, rows).length;
     downloadCodesForBatches(format, rows, codes, { templates, people, sections }, {
-      combinedFilename: downloadScope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
-      zipFilename: downloadScope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
+      combinedFilename: scope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
+      zipFilename: scope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
     });
     setToast(batchCodeDownloadToast(format, rows.length, codeCount));
     setDownloadScope(null);
+  }
+
+  function requestDownload(scope: "selected" | "all") {
+    const rows = scope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
+    if (rows.length === 1) {
+      downloadBatches(rows, "combined", scope);
+      return;
+    }
+    setDownloadScope(scope);
   }
 
   const downloadRows =
@@ -179,8 +192,8 @@ export default function TemplatePaymentsPage() {
         allVisibleSelected={allVisibleSelected}
         someVisibleSelected={someVisibleSelected}
         onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => setDownloadScope("selected")}
-        onDownloadAll={() => setDownloadScope("all")}
+        onDownloadSelected={() => requestDownload("selected")}
+        onDownloadAll={() => requestDownload("all")}
         downloadSelectedDisabled={selected.length === 0}
         downloadAllDisabled={visibleBatches.length === 0}
         filterGroups={[
@@ -355,7 +368,7 @@ export default function TemplatePaymentsPage() {
           combinedDescription="Every payment code from these batches will be included in one file, along with batch information."
           separateDescription="A separate file will be created for each batch, containing all of its payment codes and batch information."
           onCancel={() => setDownloadScope(null)}
-          onDownload={(format) => downloadBatches(downloadRows, format)}
+          onDownload={(format) => downloadScope && downloadBatches(downloadRows, format, downloadScope)}
         />
       ) : null}
 

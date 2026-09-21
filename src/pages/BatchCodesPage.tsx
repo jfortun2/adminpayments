@@ -130,12 +130,12 @@ export default function BatchCodesPage() {
     return tableStyles.statusDeactivated;
   }
 
-  function downloadRows(rows: typeof visibleCodes, format: ReportDownloadFormat) {
+  function downloadRows(rows: typeof visibleCodes, format: ReportDownloadFormat, scope: "selected" | "all") {
     const noun = rows.length === 1 ? "code" : "codes";
     const prefix = slugify(batch?.name ?? "batch") || "batch";
     downloadCsvOrZip(format, {
-      combinedFilename: downloadScope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
-      zipFilename: downloadScope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
+      combinedFilename: scope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
+      zipFilename: scope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
       headers: PAYMENT_CODE_EXPORT_HEADERS,
       items: rows.map((item) => ({
         filename: slugify(item.code) || item.id,
@@ -148,6 +148,15 @@ export default function BatchCodesPage() {
         : `Downloaded ${rows.length} ${noun}.`,
     );
     setDownloadScope(null);
+  }
+
+  function requestDownload(scope: "selected" | "all") {
+    const rows = scope === "all" ? visibleCodes : visibleCodes.filter((item) => selected.includes(item.id));
+    if (rows.length === 1) {
+      downloadRows(rows, "combined", scope);
+      return;
+    }
+    setDownloadScope(scope);
   }
 
   const downloadItems =
@@ -179,8 +188,8 @@ export default function BatchCodesPage() {
         allVisibleSelected={allVisibleSelected}
         someVisibleSelected={someVisibleSelected}
         onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => setDownloadScope("selected")}
-        onDownloadAll={() => setDownloadScope("all")}
+        onDownloadSelected={() => requestDownload("selected")}
+        onDownloadAll={() => requestDownload("all")}
         downloadSelectedDisabled={selected.length === 0}
         downloadAllDisabled={visibleCodes.length === 0}
         filterGroups={[
@@ -370,7 +379,7 @@ export default function BatchCodesPage() {
           combinedDescription="These payment codes will be included in one file, along with batch information."
           separateDescription="A separate file will be created for each payment code."
           onCancel={() => setDownloadScope(null)}
-          onDownload={(format) => downloadRows(downloadItems, format)}
+          onDownload={(format) => downloadScope && downloadRows(downloadItems, format, downloadScope)}
         />
       ) : null}
 

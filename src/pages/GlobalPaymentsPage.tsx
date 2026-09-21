@@ -133,14 +133,27 @@ export default function GlobalPaymentsPage() {
     );
   }
 
-  function downloadBatches(rows: typeof visibleBatches, format: ReportDownloadFormat) {
+  function downloadBatches(
+    rows: typeof visibleBatches,
+    format: ReportDownloadFormat,
+    scope: "selected" | "all",
+  ) {
     const codeCount = codesInBatches(codes, rows).length;
     downloadCodesForBatches(format, rows, codes, { templates, people, sections }, {
-      combinedFilename: downloadScope === "all" ? "payment-codes.csv" : "payment-codes-selected.csv",
-      zipFilename: downloadScope === "all" ? "payment-codes.zip" : "payment-codes-selected.zip",
+      combinedFilename: scope === "all" ? "payment-codes.csv" : "payment-codes-selected.csv",
+      zipFilename: scope === "all" ? "payment-codes.zip" : "payment-codes-selected.zip",
     });
     setToast(batchCodeDownloadToast(format, rows.length, codeCount));
     setDownloadScope(null);
+  }
+
+  function requestDownload(scope: "selected" | "all") {
+    const rows = scope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
+    if (rows.length === 1) {
+      downloadBatches(rows, "combined", scope);
+      return;
+    }
+    setDownloadScope(scope);
   }
 
   const downloadRows =
@@ -192,8 +205,8 @@ export default function GlobalPaymentsPage() {
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-            onDownloadSelected={() => setDownloadScope("selected")}
-            onDownloadAll={() => setDownloadScope("all")}
+            onDownloadSelected={() => requestDownload("selected")}
+            onDownloadAll={() => requestDownload("all")}
             downloadSelectedDisabled={selected.length === 0}
             downloadAllDisabled={visibleBatches.length === 0}
             filterGroups={[
@@ -373,7 +386,7 @@ export default function GlobalPaymentsPage() {
           combinedDescription="Every payment code from these batches will be included in one file, along with batch information."
           separateDescription="A separate file will be created for each batch, containing all of its payment codes and batch information."
           onCancel={() => setDownloadScope(null)}
-          onDownload={(format) => downloadBatches(downloadRows, format)}
+          onDownload={(format) => downloadScope && downloadBatches(downloadRows, format, downloadScope)}
         />
       ) : null}
 
