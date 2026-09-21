@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
 import DownloadReportDialog from "../components/DownloadReportDialog";
@@ -8,7 +8,7 @@ import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
 import { PAYMENT_CODE_EXPORT_HEADERS, codeStatusLabel, paymentCodeExportRow } from "../data/codeExport";
-import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
+import { downloadCsvOrZip, formatDate, paymentCodeMatchesQuery, slugify } from "../data/helpers";
 import type { ReportDownloadFormat } from "../data/reporting";
 import type { CodeStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
@@ -17,6 +17,20 @@ type SortKey = "code" | "status" | "createdAt" | "createdBy" | "redeemedBy" | "r
 
 function parseList(value: string | null): string[] {
   return value ? value.split(",").filter(Boolean) : [];
+}
+
+function highlightPaymentCode(code: string, query: string): ReactNode {
+  const trimmed = query.trim();
+  if (!trimmed) return code;
+  const index = code.toLowerCase().indexOf(trimmed.toLowerCase());
+  if (index === -1) return code;
+  return (
+    <>
+      {code.slice(0, index)}
+      <mark className={tableStyles.codeMatch}>{code.slice(index, index + trimmed.length)}</mark>
+      {code.slice(index + trimmed.length)}
+    </>
+  );
 }
 
 export default function BatchCodesPage() {
@@ -30,6 +44,7 @@ export default function BatchCodesPage() {
     null,
   );
   const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
+  const firstMatchRef = useRef<HTMLTableRowElement>(null);
 
   const batch = batches.find((item) => item.id === batchId);
   const template = templates.find((item) => item.id === (templateId ?? batch?.templateId));
@@ -101,6 +116,9 @@ export default function BatchCodesPage() {
     };
 
     return [...filtered].sort((a, b) => {
+      const aMatch = paymentCodeMatchesQuery(a.code, search) ? 0 : 1;
+      const bMatch = paymentCodeMatchesQuery(b.code, search) ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
       const result = valueOf(a) < valueOf(b) ? -1 : valueOf(a) > valueOf(b) ? 1 : 0;
       return sortDir === "asc" ? result : -result;
     });
@@ -110,6 +128,11 @@ export default function BatchCodesPage() {
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
   const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
   const pendingCode = codes.find((item) => item.id === pendingAction?.codeId);
+  const firstMatchId = visibleCodes.find((item) => paymentCodeMatchesQuery(item.code, search))?.id;
+
+  useEffect(() => {
+    firstMatchRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [firstMatchId]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -262,11 +285,14 @@ export default function BatchCodesPage() {
               visibleCodes.map((item) => {
                 const redeemedBy = getPersonName(people, item.redeemedById);
                 const section = sections.find((entry) => entry.id === item.redeemedForSectionId);
+                const isCodeMatch = paymentCodeMatchesQuery(item.code, search);
                 return (
                   <tr
                     key={item.id}
+                    ref={item.id === firstMatchId ? firstMatchRef : undefined}
                     data-selected={selected.includes(item.id)}
                     data-deactivated={item.status === "deactivated"}
+                    data-match={isCodeMatch}
                   >
                     <td className={tableStyles.checkCell}>
                       <input
@@ -283,7 +309,7 @@ export default function BatchCodesPage() {
                         }
                       />
                     </td>
-                    <td className={tableStyles.nameCell}>{item.code}</td>
+                    <td className={tableStyles.nameCell}>{highlightPaymentCode(item.code, search)}</td>
                     <td>
                       <span className={statusClass(item.status)}>{codeStatusLabel(item.status)}</span>
                     </td>
