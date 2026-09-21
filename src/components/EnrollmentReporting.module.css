@@ -8,7 +8,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin: 0 0 16px;
 }
 
 .summaryCard {
@@ -36,6 +36,49 @@
   font-size: 32px;
   line-height: 44px;
   font-weight: 700;
+}
+
+.viewAll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.viewAllLabel {
+  margin: 0;
+  color: var(--text-high);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.viewAllOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.viewAllOption {
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--text-high);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.viewAllOptionSelected {
+  border-color: var(--text-button);
+  color: var(--text-button);
+}
+
+.viewAllOption:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .dropdownWrap {
@@ -140,38 +183,6 @@
 .dateClear:disabled {
   color: var(--text-muted);
   cursor: not-allowed;
-}
-
-.groupMenu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 6;
-  min-width: 220px;
-  padding: 8px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: white;
-  box-shadow: var(--shadow-surface);
-}
-
-.groupOption {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-high);
-  font-size: 14px;
-  line-height: 20px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.groupOption[aria-checked="true"] {
-  font-weight: 600;
-  background: var(--row-selected);
 }
 
 .identityWide {
