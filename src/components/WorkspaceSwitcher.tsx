@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import chartBar from "../assets/admin/chart-bar.svg";
 import school from "../assets/admin/school.svg";
 import supportIcon from "../assets/admin/support.svg";
-import writing from "../assets/admin/writing.svg";
-import { ToolIcon } from "./Icons";
+import { ToolIcon, WritingIcon } from "./Icons";
 import styles from "./WorkspaceSwitcher.module.css";
 
 export type WorkspaceId = "admin" | "author";
@@ -30,12 +29,12 @@ export function WorkspaceNav({
           Admin
         </Link>
         <Link
-          className={`${styles.workspaceItem} ${active === "author" ? styles.workspaceItemActive : ""}`}
+          className={`${styles.workspaceItem} ${active === "author" ? styles.workspaceItemAuthorActive : ""}`}
           to={authorTo}
           aria-current={active === "author" ? "page" : undefined}
         >
           <span className={styles.workspaceIcon}>
-            <img src={writing} width={24} height={24} alt="" />
+            <WritingIcon />
           </span>
           Course Author
         </Link>

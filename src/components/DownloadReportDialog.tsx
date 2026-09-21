@@ -3,30 +3,30 @@ import type { ReportDownloadFormat } from "../data/reporting";
 import styles from "./DownloadReportDialog.module.css";
 
 interface DownloadReportDialogProps {
+  title?: string;
   summary: string;
+  combinedDescription?: string;
+  separateDescription?: string;
   onCancel: () => void;
   onDownload: (format: ReportDownloadFormat) => void;
 }
 
-const FORMAT_OPTIONS: {
-  value: ReportDownloadFormat;
-  title: string;
-  description: string;
-}[] = [
+const FORMAT_OPTIONS = [
   {
-    value: "combined",
+    value: "combined" as const,
     title: "One combined CSV",
-    description: "All enrollment records will be included in one file.",
   },
   {
-    value: "zip",
+    value: "zip" as const,
     title: "Separate CSVs in a ZIP",
-    description: "A separate file will be created for each course section.",
   },
 ];
 
 export default function DownloadReportDialog({
+  title = "Download enrollment report",
   summary,
+  combinedDescription = "All enrollment records will be included in one file.",
+  separateDescription = "A separate file will be created for each course section.",
   onCancel,
   onDownload,
 }: DownloadReportDialogProps) {
@@ -84,7 +84,7 @@ export default function DownloadReportDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id={titleId} className={styles.title}>
-          Download enrollment report
+          {title}
         </h2>
         <p id={summaryId} className={styles.summary}>
           {summary}
@@ -99,6 +99,8 @@ export default function DownloadReportDialog({
             const titleOptionId = `${optionId}-title`;
             const descriptionId = `${optionId}-description`;
             const selected = format === option.value;
+            const description =
+              option.value === "combined" ? combinedDescription : separateDescription;
             return (
               <label
                 key={option.value}
@@ -122,7 +124,7 @@ export default function DownloadReportDialog({
                     {option.title}
                   </span>
                   <span id={descriptionId} className={styles.optionDescription}>
-                    {option.description}
+                    {description}
                   </span>
                 </span>
               </label>

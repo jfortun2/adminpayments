@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DownloadReportDialog from "../components/DownloadReportDialog";
 import EnrollmentReporting from "../components/EnrollmentReporting";
 import { ChevronDownIcon, ChevronIcon, ChevronUpIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import { downloadCsv, formatDate } from "../data/helpers";
+import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
+import type { ReportDownloadFormat } from "../data/reporting";
 import type { BatchStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
@@ -20,10 +22,13 @@ function parseList(value: string | null): string[] {
 export default function GlobalPaymentsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { templates, batches, codes, people, deactivateBatch } = usePayments();
+  const { templates, batches, codes, people, deactivateBatch, reactivateBatch } = usePayments();
   const [selected, setSelected] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [pendingBatchId, setPendingBatchId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; batchId: string } | null>(
+    null,
+  );
+  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
 
   const tab = searchParams.get("tab") === "reporting" ? "reporting" : "codes";
   const search = searchParams.get("q") ?? "";
@@ -101,7 +106,7 @@ export default function GlobalPaymentsPage() {
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
   const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
   const hasActiveFilters = createdBy.length > 0 || status.length > 0 || templateFilter.length > 0;
-  const pendingBatch = batches.find((batch) => batch.id === pendingBatchId);
+  const pendingBatch = batches.find((batch) => batch.id === pendingAction?.batchId);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -122,19 +127,32 @@ export default function GlobalPaymentsPage() {
     );
   }
 
-  function downloadBatches(rows: typeof visibleBatches, filename: string, message: string) {
-    downloadCsv(filename, [
-      ["Batch Name", "Template", "Created", "Created by", "Status"],
-      ...rows.map((batch) => [
-        batch.name,
-        templates.find((item) => item.id === batch.templateId)?.name ?? "",
-        formatDate(batch.createdAt),
-        getPersonName(people, batch.createdById),
-        batch.status === "active" ? "Active" : "Deactivated",
-      ]),
-    ]);
-    setToast(message);
+  function downloadBatches(rows: typeof visibleBatches, format: ReportDownloadFormat) {
+    const noun = rows.length === 1 ? "batch" : "batches";
+    downloadCsvOrZip(format, {
+      combinedFilename: downloadScope === "all" ? "payment-batches.csv" : "payment-batches-selected.csv",
+      zipFilename: downloadScope === "all" ? "payment-batches.zip" : "payment-batches-selected.zip",
+      headers: ["Batch Name", "Template", "Created", "Created by", "Status"],
+      items: rows.map((batch) => ({
+        filename: slugify(batch.name) || batch.id,
+        values: [
+          batch.name,
+          templates.find((item) => item.id === batch.templateId)?.name ?? "",
+          formatDate(batch.createdAt),
+          getPersonName(people, batch.createdById),
+          batch.status === "active" ? "Active" : "Deactivated",
+        ],
+      })),
+    });
+    setToast(
+      format === "zip"
+        ? `Downloaded ${rows.length} ${noun} as separate files.`
+        : `Downloaded ${rows.length} ${noun}.`,
+    );
+    setDownloadScope(null);
   }
+
+  const downloadRows = downloadScope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
 
   return (
     <div className={styles.page}>
@@ -181,21 +199,8 @@ export default function GlobalPaymentsPage() {
             allVisibleSelected={allVisibleSelected}
             someVisibleSelected={someVisibleSelected}
             onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-            onDownloadSelected={() => {
-              const rows = visibleBatches.filter((batch) => selected.includes(batch.id));
-              downloadBatches(
-                rows,
-                "payment-batches-selected.csv",
-                `Downloaded ${rows.length} selected batch${rows.length === 1 ? "" : "es"}.`,
-              );
-            }}
-            onDownloadAll={() =>
-              downloadBatches(
-                visibleBatches,
-                "payment-batches.csv",
-                `Downloaded ${visibleBatches.length} batch${visibleBatches.length === 1 ? "" : "es"}.`,
-              )
-            }
+            onDownloadSelected={() => setDownloadScope("selected")}
+            onDownloadAll={() => setDownloadScope("all")}
             downloadSelectedDisabled={selected.length === 0}
             downloadAllDisabled={visibleBatches.length === 0}
             filterGroups={[
@@ -315,12 +320,18 @@ export default function GlobalPaymentsPage() {
                             <button
                               type="button"
                               className={tableStyles.dangerButton}
-                              onClick={() => setPendingBatchId(batch.id)}
+                              onClick={() => setPendingAction({ type: "deactivate", batchId: batch.id })}
                             >
                               Deactivate
                             </button>
                           ) : (
-                            <span className={tableStyles.deactivatedLabel}>Deactivated</span>
+                            <button
+                              type="button"
+                              className={tableStyles.reactivateButton}
+                              onClick={() => setPendingAction({ type: "reactivate", batchId: batch.id })}
+                            >
+                              Reactivate
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -333,17 +344,43 @@ export default function GlobalPaymentsPage() {
         </>
       )}
 
-      {pendingBatch ? (
+      {pendingBatch && pendingAction?.type === "deactivate" ? (
         <ConfirmDialog
           title="Deactivate this batch?"
           message={`Deactivate ${pendingBatch.name}? Unused codes in this batch will no longer be redeemable.`}
           confirmLabel="Deactivate"
-          onCancel={() => setPendingBatchId(null)}
+          onCancel={() => setPendingAction(null)}
           onConfirm={() => {
             deactivateBatch(pendingBatch.id);
-            setPendingBatchId(null);
+            setPendingAction(null);
             setToast(`${pendingBatch.name} was deactivated.`);
           }}
+        />
+      ) : null}
+
+      {pendingBatch && pendingAction?.type === "reactivate" ? (
+        <ConfirmDialog
+          title="Reactivate this batch?"
+          message={`Reactivate ${pendingBatch.name}? Unused codes in this batch will be redeemable again.`}
+          confirmLabel="Reactivate"
+          confirmTone="primary"
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            reactivateBatch(pendingBatch.id);
+            setPendingAction(null);
+            setToast(`${pendingBatch.name} was reactivated.`);
+          }}
+        />
+      ) : null}
+
+      {downloadScope ? (
+        <DownloadReportDialog
+          title="Download payment batches"
+          summary={`Includes ${downloadRows.length} ${downloadRows.length === 1 ? "batch" : "batches"}${downloadScope === "all" ? " currently in view" : " selected"}.`}
+          combinedDescription="All selected batches will be included in one file."
+          separateDescription="A separate file will be created for each batch."
+          onCancel={() => setDownloadScope(null)}
+          onDownload={(format) => downloadBatches(downloadRows, format)}
         />
       ) : null}
 

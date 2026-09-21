@@ -13,7 +13,9 @@ interface PaymentsContextValue extends PaymentsState {
   currentUserId: string;
   createBatch: (input: { templateId: string; name: string; count: number }) => PaymentBatch;
   deactivateBatch: (batchId: string) => void;
+  reactivateBatch: (batchId: string) => void;
   deactivateCode: (codeId: string) => void;
+  reactivateCode: (codeId: string) => void;
 }
 
 const PaymentsContext = createContext<PaymentsContextValue | null>(null);
@@ -21,7 +23,9 @@ const PaymentsContext = createContext<PaymentsContextValue | null>(null);
 type Action =
   | { type: "create-batch"; batch: PaymentBatch; codes: PaymentCode[] }
   | { type: "deactivate-batch"; batchId: string }
-  | { type: "deactivate-code"; codeId: string };
+  | { type: "reactivate-batch"; batchId: string }
+  | { type: "deactivate-code"; codeId: string }
+  | { type: "reactivate-code"; codeId: string };
 
 function reducer(state: PaymentsState, action: Action): PaymentsState {
   switch (action.type) {
@@ -43,11 +47,32 @@ function reducer(state: PaymentsState, action: Action): PaymentsState {
             : item,
         ),
       };
+    case "reactivate-batch":
+      return {
+        ...state,
+        batches: state.batches.map((batch) =>
+          batch.id === action.batchId ? { ...batch, status: "active" } : batch,
+        ),
+        codes: state.codes.map((item) =>
+          item.batchId === action.batchId && item.status === "deactivated"
+            ? { ...item, status: item.redeemedById ? "redeemed" : "unused" }
+            : item,
+        ),
+      };
     case "deactivate-code":
       return {
         ...state,
         codes: state.codes.map((item) =>
           item.id === action.codeId ? { ...item, status: "deactivated" } : item,
+        ),
+      };
+    case "reactivate-code":
+      return {
+        ...state,
+        codes: state.codes.map((item) =>
+          item.id === action.codeId
+            ? { ...item, status: item.redeemedById ? "redeemed" : "unused" }
+            : item,
         ),
       };
     default:
@@ -98,8 +123,14 @@ export function PaymentsProvider({ children }: { children: ReactNode }) {
       deactivateBatch(batchId) {
         dispatch({ type: "deactivate-batch", batchId });
       },
+      reactivateBatch(batchId) {
+        dispatch({ type: "reactivate-batch", batchId });
+      },
       deactivateCode(codeId) {
         dispatch({ type: "deactivate-code", codeId });
+      },
+      reactivateCode(codeId) {
+        dispatch({ type: "reactivate-code", codeId });
       },
     }),
     [state],

@@ -2,13 +2,15 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
 import CreateBatchPanel from "../components/CreateBatchPanel";
+import DownloadReportDialog from "../components/DownloadReportDialog";
 import { ChevronDownIcon, ChevronIcon, ChevronUpIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import toolbarStyles from "../components/PaymentsToolbar.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import { downloadCsv, formatDate } from "../data/helpers";
+import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
+import type { ReportDownloadFormat } from "../data/reporting";
 import type { BatchStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
@@ -22,12 +24,15 @@ export default function TemplatePaymentsPage() {
   const { templateId = "" } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { templates, batches, codes, people, createBatch, deactivateBatch } = usePayments();
+  const { templates, batches, codes, people, createBatch, deactivateBatch, reactivateBatch } = usePayments();
   const createButtonRef = useRef<HTMLButtonElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [pendingBatchId, setPendingBatchId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; batchId: string } | null>(
+    null,
+  );
+  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
 
   const template = templates.find((item) => item.id === templateId);
   const search = searchParams.get("q") ?? "";
@@ -123,20 +128,35 @@ export default function TemplatePaymentsPage() {
     );
   }
 
-  function downloadBatches(rows: typeof visibleBatches, filename: string, message: string) {
-    downloadCsv(filename, [
-      ["Batch Name", "Created", "Created by", "Status"],
-      ...rows.map((batch) => [
-        batch.name,
-        formatDate(batch.createdAt),
-        getPersonName(people, batch.createdById),
-        batch.status === "active" ? "Active" : "Deactivated",
-      ]),
-    ]);
-    setToast(message);
+  function downloadBatches(rows: typeof visibleBatches, format: ReportDownloadFormat) {
+    const noun = rows.length === 1 ? "batch" : "batches";
+    const prefix = slugify(template?.name ?? "template") || "template";
+    downloadCsvOrZip(format, {
+      combinedFilename: downloadScope === "all" ? `${prefix}-batches.csv` : `${prefix}-batches-selected.csv`,
+      zipFilename: downloadScope === "all" ? `${prefix}-batches.zip` : `${prefix}-batches-selected.zip`,
+      headers: ["Batch Name", "Created", "Created by", "Status"],
+      items: rows.map((batch) => ({
+        filename: slugify(batch.name) || batch.id,
+        values: [
+          batch.name,
+          formatDate(batch.createdAt),
+          getPersonName(people, batch.createdById),
+          batch.status === "active" ? "Active" : "Deactivated",
+        ],
+      })),
+    });
+    setToast(
+      format === "zip"
+        ? `Downloaded ${rows.length} ${noun} as separate files.`
+        : `Downloaded ${rows.length} ${noun}.`,
+    );
+    setDownloadScope(null);
   }
 
-  const pendingBatch = templateBatches.find((batch) => batch.id === pendingBatchId);
+  const downloadRows =
+    downloadScope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
+
+  const pendingBatch = templateBatches.find((batch) => batch.id === pendingAction?.batchId);
 
   if (!template) {
     return (
@@ -165,21 +185,8 @@ export default function TemplatePaymentsPage() {
         allVisibleSelected={allVisibleSelected}
         someVisibleSelected={someVisibleSelected}
         onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => {
-          const rows = visibleBatches.filter((batch) => selected.includes(batch.id));
-          downloadBatches(
-            rows,
-            `${template.name}-batches-selected.csv`,
-            `Downloaded ${rows.length} selected batch${rows.length === 1 ? "" : "es"}.`,
-          );
-        }}
-        onDownloadAll={() =>
-          downloadBatches(
-            visibleBatches,
-            `${template.name}-batches.csv`,
-            `Downloaded ${visibleBatches.length} batch${visibleBatches.length === 1 ? "" : "es"}.`,
-          )
-        }
+        onDownloadSelected={() => setDownloadScope("selected")}
+        onDownloadAll={() => setDownloadScope("all")}
         downloadSelectedDisabled={selected.length === 0}
         downloadAllDisabled={visibleBatches.length === 0}
         filterGroups={[
@@ -282,12 +289,18 @@ export default function TemplatePaymentsPage() {
                       <button
                         type="button"
                         className={tableStyles.dangerButton}
-                        onClick={() => setPendingBatchId(batch.id)}
+                        onClick={() => setPendingAction({ type: "deactivate", batchId: batch.id })}
                       >
                         Deactivate
                       </button>
                     ) : (
-                      <span className={tableStyles.deactivatedLabel}>Deactivated</span>
+                      <button
+                        type="button"
+                        className={tableStyles.reactivateButton}
+                        onClick={() => setPendingAction({ type: "reactivate", batchId: batch.id })}
+                      >
+                        Reactivate
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -312,17 +325,43 @@ export default function TemplatePaymentsPage() {
         />
       ) : null}
 
-      {pendingBatch ? (
+      {pendingBatch && pendingAction?.type === "deactivate" ? (
         <ConfirmDialog
           title="Deactivate this batch?"
           message={`Deactivate ${pendingBatch.name}? Unused codes in this batch will no longer be redeemable.`}
           confirmLabel="Deactivate"
-          onCancel={() => setPendingBatchId(null)}
+          onCancel={() => setPendingAction(null)}
           onConfirm={() => {
             deactivateBatch(pendingBatch.id);
-            setPendingBatchId(null);
+            setPendingAction(null);
             setToast(`${pendingBatch.name} was deactivated.`);
           }}
+        />
+      ) : null}
+
+      {pendingBatch && pendingAction?.type === "reactivate" ? (
+        <ConfirmDialog
+          title="Reactivate this batch?"
+          message={`Reactivate ${pendingBatch.name}? Unused codes in this batch will be redeemable again.`}
+          confirmLabel="Reactivate"
+          confirmTone="primary"
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            reactivateBatch(pendingBatch.id);
+            setPendingAction(null);
+            setToast(`${pendingBatch.name} was reactivated.`);
+          }}
+        />
+      ) : null}
+
+      {downloadScope ? (
+        <DownloadReportDialog
+          title="Download payment batches"
+          summary={`Includes ${downloadRows.length} ${downloadRows.length === 1 ? "batch" : "batches"}${downloadScope === "all" ? " currently in view" : " selected"}.`}
+          combinedDescription="All selected batches will be included in one file."
+          separateDescription="A separate file will be created for each batch."
+          onCancel={() => setDownloadScope(null)}
+          onDownload={(format) => downloadBatches(downloadRows, format)}
         />
       ) : null}
 

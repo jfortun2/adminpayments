@@ -118,6 +118,7 @@
 }
 
 .dangerButton,
+.reactivateButton,
 .deactivatedLabel {
   min-width: 107px;
   padding: 8px 24px;
@@ -135,9 +136,18 @@
   cursor: pointer;
 }
 
-.dangerButton:disabled {
+.dangerButton:disabled,
+.reactivateButton:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.reactivateButton {
+  border: 1px solid var(--border-bold);
+  background: white;
+  color: var(--text-button);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
 }
 
 .deactivatedLabel {

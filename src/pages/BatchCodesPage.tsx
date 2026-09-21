@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
+import DownloadReportDialog from "../components/DownloadReportDialog";
 import { BackIcon, ChevronDownIcon, ChevronUpIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import { downloadCsv, formatDate } from "../data/helpers";
+import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
+import type { ReportDownloadFormat } from "../data/reporting";
 import type { CodeStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
@@ -20,10 +22,13 @@ export default function BatchCodesPage() {
   const { templateId, batchId = "" } = useParams();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { templates, batches, codes, people, sections, deactivateCode } = usePayments();
+  const { templates, batches, codes, people, sections, deactivateCode, reactivateCode } = usePayments();
   const [selected, setSelected] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
-  const [pendingCodeId, setPendingCodeId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; codeId: string } | null>(
+    null,
+  );
+  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
 
   const batch = batches.find((item) => item.id === batchId);
   const template = templates.find((item) => item.id === (templateId ?? batch?.templateId));
@@ -103,7 +108,7 @@ export default function BatchCodesPage() {
   const visibleIds = visibleCodes.map((item) => item.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
   const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
-  const pendingCode = codes.find((item) => item.id === pendingCodeId);
+  const pendingCode = codes.find((item) => item.id === pendingAction?.codeId);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -130,21 +135,36 @@ export default function BatchCodesPage() {
     return "Deactivated";
   }
 
-  function downloadRows(rows: typeof visibleCodes, filename: string, message: string) {
-    downloadCsv(filename, [
-      ["Payment code", "Status", "Created", "Created by", "Redeemed by", "Redeemed at", "Redeemed for"],
-      ...rows.map((item) => [
-        item.code,
-        statusLabel(item.status),
-        formatDate(item.createdAt),
-        getPersonName(people, item.createdById),
-        getPersonName(people, item.redeemedById) || "--",
-        item.redeemedAt ? formatDate(item.redeemedAt) : "",
-        sections.find((section) => section.id === item.redeemedForSectionId)?.name ?? "--",
-      ]),
-    ]);
-    setToast(message);
+  function downloadRows(rows: typeof visibleCodes, format: ReportDownloadFormat) {
+    const noun = rows.length === 1 ? "code" : "codes";
+    const prefix = slugify(batch?.name ?? "batch") || "batch";
+    downloadCsvOrZip(format, {
+      combinedFilename: downloadScope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
+      zipFilename: downloadScope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
+      headers: ["Payment code", "Status", "Created", "Created by", "Redeemed by", "Redeemed at", "Redeemed for"],
+      items: rows.map((item) => ({
+        filename: slugify(item.code) || item.id,
+        values: [
+          item.code,
+          statusLabel(item.status),
+          formatDate(item.createdAt),
+          getPersonName(people, item.createdById),
+          getPersonName(people, item.redeemedById) || "--",
+          item.redeemedAt ? formatDate(item.redeemedAt) : "",
+          sections.find((section) => section.id === item.redeemedForSectionId)?.name ?? "--",
+        ],
+      })),
+    });
+    setToast(
+      format === "zip"
+        ? `Downloaded ${rows.length} ${noun} as separate files.`
+        : `Downloaded ${rows.length} ${noun}.`,
+    );
+    setDownloadScope(null);
   }
+
+  const downloadItems =
+    downloadScope === "all" ? visibleCodes : visibleCodes.filter((item) => selected.includes(item.id));
 
   if (!batch || (!isGlobal && !template)) {
     return (
@@ -172,21 +192,8 @@ export default function BatchCodesPage() {
         allVisibleSelected={allVisibleSelected}
         someVisibleSelected={someVisibleSelected}
         onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => {
-          const rows = visibleCodes.filter((item) => selected.includes(item.id));
-          downloadRows(
-            rows,
-            `${batch.name}-codes-selected.csv`,
-            `Downloaded ${rows.length} selected code${rows.length === 1 ? "" : "s"}.`,
-          );
-        }}
-        onDownloadAll={() =>
-          downloadRows(
-            visibleCodes,
-            `${batch.name}-codes.csv`,
-            `Downloaded ${visibleCodes.length} code${visibleCodes.length === 1 ? "" : "s"}.`,
-          )
-        }
+        onDownloadSelected={() => setDownloadScope("selected")}
+        onDownloadAll={() => setDownloadScope("all")}
         downloadSelectedDisabled={selected.length === 0}
         downloadAllDisabled={visibleCodes.length === 0}
         filterGroups={[
@@ -311,12 +318,18 @@ export default function BatchCodesPage() {
                     </td>
                     <td className={tableStyles.actionsCell}>
                       {item.status === "deactivated" ? (
-                        <span className={tableStyles.deactivatedLabel}>Deactivated</span>
+                        <button
+                          type="button"
+                          className={tableStyles.reactivateButton}
+                          onClick={() => setPendingAction({ type: "reactivate", codeId: item.id })}
+                        >
+                          Reactivate
+                        </button>
                       ) : (
                         <button
                           type="button"
                           className={tableStyles.dangerButton}
-                          onClick={() => setPendingCodeId(item.id)}
+                          onClick={() => setPendingAction({ type: "deactivate", codeId: item.id })}
                         >
                           Deactivate
                         </button>
@@ -330,17 +343,47 @@ export default function BatchCodesPage() {
         </table>
       </div>
 
-      {pendingCode ? (
+      {pendingCode && pendingAction?.type === "deactivate" ? (
         <ConfirmDialog
           title="Deactivate this payment code?"
           message={`Deactivate ${pendingCode.code}? This code will no longer be redeemable.`}
           confirmLabel="Deactivate"
-          onCancel={() => setPendingCodeId(null)}
+          onCancel={() => setPendingAction(null)}
           onConfirm={() => {
             deactivateCode(pendingCode.id);
-            setPendingCodeId(null);
+            setPendingAction(null);
             setToast(`${pendingCode.code} was deactivated.`);
           }}
+        />
+      ) : null}
+
+      {pendingCode && pendingAction?.type === "reactivate" ? (
+        <ConfirmDialog
+          title="Reactivate this payment code?"
+          message={
+            pendingCode.redeemedById
+              ? `Reactivate ${pendingCode.code}? This code will remain redeemed.`
+              : `Reactivate ${pendingCode.code}? This code will be redeemable again.`
+          }
+          confirmLabel="Reactivate"
+          confirmTone="primary"
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            reactivateCode(pendingCode.id);
+            setPendingAction(null);
+            setToast(`${pendingCode.code} was reactivated.`);
+          }}
+        />
+      ) : null}
+
+      {downloadScope ? (
+        <DownloadReportDialog
+          title="Download payment codes"
+          summary={`Includes ${downloadItems.length} ${downloadItems.length === 1 ? "code" : "codes"}${downloadScope === "all" ? " currently in view" : " selected"}.`}
+          combinedDescription="All selected codes will be included in one file."
+          separateDescription="A separate file will be created for each payment code."
+          onCancel={() => setDownloadScope(null)}
+          onDownload={(format) => downloadRows(downloadItems, format)}
         />
       ) : null}
 

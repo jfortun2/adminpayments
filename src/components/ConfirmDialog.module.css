@@ -38,7 +38,8 @@
 }
 
 .secondary,
-.danger {
+.danger,
+.primary {
   padding: 8px 24px;
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -58,4 +59,10 @@
   border: 1px solid var(--border-danger);
   background: white;
   color: var(--text-danger);
+}
+
+.primary {
+  border: 1px solid var(--fill-primary);
+  background: white;
+  color: var(--text-button);
 }
