@@ -1,4 +1,4 @@
-import { downloadCsv, downloadZip, slugify, toCsv, toTimestamp, formatDateTime } from "./helpers";
+import { downloadCsv, downloadZip, slugify, toCsv, toTimestamp } from "./helpers";
 import type {
   CourseSection,
   Enrollment,
@@ -239,20 +239,57 @@ export function summarizeSelection(selectedRows: ReportRow[], visibleRows: Repor
   return `Includes ${pluralize(count, "section")} across ${pluralize(selectedTemplateIds.length, "template")}`;
 }
 
-function statusLabel(status: Enrollment["status"]): string {
-  if (status === "valid_paid") return "Valid paid";
+const EMPTY_CELL = "--";
+
+function display(value: string | undefined): string {
+  return value?.trim() ? value : EMPTY_CELL;
+}
+
+function enrollmentStatusLabel(status: Enrollment["status"]): string {
+  if (status === "valid_paid") return "Paid";
   if (status === "grace") return "Grace";
   return "Unpaid";
+}
+
+function paymentStatusLabel(enrollment: Enrollment): string {
+  if (enrollment.paymentStatus === "bypassed") return "Bypassed";
+  if (enrollment.paymentStatus === "complete") return "Complete";
+  if (enrollment.paymentStatus === "paid") return "Paid";
+  return EMPTY_CELL;
+}
+
+function bypassedLabel(enrollment: Enrollment): string {
+  if (enrollment.paymentStatus === "bypassed") return "Yes";
+  if (enrollment.status === "valid_paid") return "No";
+  return EMPTY_CELL;
 }
 
 function methodLabel(enrollment: Enrollment): string {
   if (enrollment.paymentMethod === "code") return "Code";
   if (enrollment.paymentMethod === "card") return "Card";
-  return "";
+  return EMPTY_CELL;
 }
 
-export function enrollmentCsvRows(enrollments: Enrollment[], catalog: ReportingCatalog): string[][] {
-  const personName = (id: string) => catalog.people.find((person) => person.id === id)?.name ?? "";
+function paymentDateLabel(enrollment: Enrollment): string {
+  const value = enrollment.paidAt ?? (enrollment.paymentStatus ? enrollment.enrolledAt : "");
+  if (!value) return EMPTY_CELL;
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return EMPTY_CELL;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function enrollmentCsvRows(
+  enrollments: Enrollment[],
+  catalog: ReportingCatalog,
+  groupBy: ReportGroupBy = "section",
+): string[][] {
+  const person = (id: string) => catalog.people.find((item) => item.id === id);
+  const personName = (id: string) => person(id)?.name ?? "";
+  const personEmail = (id: string) => person(id)?.email ?? "";
   const section = (id: string) => catalog.sections.find((item) => item.id === id);
   const sectionName = (id: string) => section(id)?.name ?? "";
   const instructorName = (id: string) => {
@@ -261,45 +298,69 @@ export function enrollmentCsvRows(enrollments: Enrollment[], catalog: ReportingC
   };
   const templateName = (id: string) => catalog.templates.find((item) => item.id === id)?.name ?? "";
   const institutionName = (id: string) => catalog.institutions.find((item) => item.id === id)?.name ?? "";
-  const publisherName = (id: string) => catalog.publishers.find((item) => item.id === id)?.name ?? "";
   const codeValue = (id?: string) => catalog.codes.find((item) => item.id === id)?.code ?? "";
+
+  const uniqueSectionCount = new Set(enrollments.map((item) => item.sectionId)).size;
+  const includeContext = groupBy !== "section" || uniqueSectionCount > 1;
+  const includeTemplate = groupBy === "publisher" || (groupBy === "section" && uniqueSectionCount > 1);
+
+  const headers = [
+    "Student name",
+    "Student email",
+    "Enrollment status",
+    "Payment status",
+    "Bypassed",
+    "Payment date",
+    "Payment method",
+    "Payment code",
+    "Payment reference",
+  ];
+  if (includeTemplate) {
+    headers.push("Template", "Template ID");
+  }
+  if (includeContext) {
+    headers.push("Course section", "Section ID", "Instructor(s)", "Institution");
+  }
 
   const sorted = [...enrollments].sort((a, b) => toTimestamp(a.enrolledAt) - toTimestamp(b.enrolledAt));
 
   return [
-    [
-      "Template",
-      "Template ID",
-      "Section name",
-      "Section ID",
-      "Instructor",
-      "Student",
-      "Institution",
-      "Publisher",
-      "Status",
-      "Payment method",
-      "Enrolled at",
-      "Payment code",
-    ],
-    ...sorted.map((enrollment) => [
-      templateName(enrollment.templateId),
-      enrollment.templateId,
-      sectionName(enrollment.sectionId),
-      enrollment.sectionId,
-      instructorName(enrollment.sectionId),
-      personName(enrollment.studentId),
-      institutionName(enrollment.institutionId),
-      publisherName(enrollment.publisherId),
-      statusLabel(enrollment.status),
-      methodLabel(enrollment),
-      formatDateTime(enrollment.enrolledAt),
-      codeValue(enrollment.codeId),
-    ]),
+    headers,
+    ...sorted.map((enrollment) => {
+      const row = [
+        display(personName(enrollment.studentId)),
+        display(personEmail(enrollment.studentId)),
+        enrollmentStatusLabel(enrollment.status),
+        paymentStatusLabel(enrollment),
+        bypassedLabel(enrollment),
+        paymentDateLabel(enrollment),
+        methodLabel(enrollment),
+        display(codeValue(enrollment.codeId)),
+        display(enrollment.paymentReference),
+      ];
+      if (includeTemplate) {
+        row.push(display(templateName(enrollment.templateId)), display(enrollment.templateId));
+      }
+      if (includeContext) {
+        row.push(
+          display(sectionName(enrollment.sectionId)),
+          display(enrollment.sectionId),
+          display(instructorName(enrollment.sectionId)),
+          display(institutionName(enrollment.institutionId)),
+        );
+      }
+      return row;
+    }),
   ];
 }
 
-export function downloadReport(filename: string, enrollments: Enrollment[], catalog: ReportingCatalog) {
-  downloadCsv(filename, enrollmentCsvRows(enrollments, catalog));
+export function downloadReport(
+  filename: string,
+  enrollments: Enrollment[],
+  catalog: ReportingCatalog,
+  groupBy: ReportGroupBy = "section",
+) {
+  downloadCsv(filename, enrollmentCsvRows(enrollments, catalog, groupBy));
 }
 
 export function reportFilename(rows: ReportRow[], combined: boolean): string {
@@ -328,6 +389,7 @@ export function downloadSelectedReports(
   rows: ReportRow[],
   format: ReportDownloadFormat,
   catalog: ReportingCatalog,
+  groupBy: ReportGroupBy = "section",
 ) {
   const sectionRows = sectionRowsFromReports(rows, catalog);
   if (format === "zip") {
@@ -335,7 +397,7 @@ export function downloadSelectedReports(
       "enrollment-reports.zip",
       uniqueReportFilenames(sectionRows).map(({ row, name }) => ({
         name,
-        content: toCsv(enrollmentCsvRows(row.enrollments, catalog)),
+        content: toCsv(enrollmentCsvRows(row.enrollments, catalog, "section")),
       })),
     );
     return;
@@ -345,5 +407,6 @@ export function downloadSelectedReports(
     reportFilename(rows, true),
     rows.flatMap((row) => row.enrollments),
     catalog,
+    groupBy,
   );
 }

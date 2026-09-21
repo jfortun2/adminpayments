@@ -2,12 +2,14 @@ export type BatchStatus = "active" | "deactivated";
 export type CodeStatus = "unused" | "redeemed" | "deactivated";
 export type EnrollmentStatus = "valid_paid" | "grace" | "unpaid";
 export type PaymentMethod = "code" | "card";
+export type PaymentStatus = "paid" | "bypassed" | "complete";
 export type ReportGroupBy = "section" | "template" | "institution" | "publisher";
 
 export interface Person {
   id: string;
   name: string;
   initials: string;
+  email?: string;
 }
 
 export interface Institution {
@@ -65,6 +67,9 @@ export interface Enrollment {
   status: EnrollmentStatus;
   enrolledAt: string;
   paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  paymentReference?: string;
+  paidAt?: string;
   codeId?: string;
 }
 

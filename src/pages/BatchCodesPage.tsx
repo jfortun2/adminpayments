@@ -7,6 +7,7 @@ import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
+import { PAYMENT_CODE_EXPORT_HEADERS, codeStatusLabel, paymentCodeExportRow } from "../data/codeExport";
 import { downloadCsvOrZip, formatDate, slugify } from "../data/helpers";
 import type { ReportDownloadFormat } from "../data/reporting";
 import type { CodeStatus, SortDirection } from "../data/types";
@@ -129,30 +130,16 @@ export default function BatchCodesPage() {
     return tableStyles.statusDeactivated;
   }
 
-  function statusLabel(value: CodeStatus) {
-    if (value === "unused") return "Unused";
-    if (value === "redeemed") return "Redeemed";
-    return "Deactivated";
-  }
-
   function downloadRows(rows: typeof visibleCodes, format: ReportDownloadFormat) {
     const noun = rows.length === 1 ? "code" : "codes";
     const prefix = slugify(batch?.name ?? "batch") || "batch";
     downloadCsvOrZip(format, {
       combinedFilename: downloadScope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
       zipFilename: downloadScope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
-      headers: ["Payment code", "Status", "Created", "Created by", "Redeemed by", "Redeemed at", "Redeemed for"],
+      headers: PAYMENT_CODE_EXPORT_HEADERS,
       items: rows.map((item) => ({
         filename: slugify(item.code) || item.id,
-        values: [
-          item.code,
-          statusLabel(item.status),
-          formatDate(item.createdAt),
-          getPersonName(people, item.createdById),
-          getPersonName(people, item.redeemedById) || "--",
-          item.redeemedAt ? formatDate(item.redeemedAt) : "",
-          sections.find((section) => section.id === item.redeemedForSectionId)?.name ?? "--",
-        ],
+        rows: [paymentCodeExportRow(item, batch, { templates, people, sections })],
       })),
     });
     setToast(
@@ -289,7 +276,7 @@ export default function BatchCodesPage() {
                     </td>
                     <td className={tableStyles.nameCell}>{item.code}</td>
                     <td>
-                      <span className={statusClass(item.status)}>{statusLabel(item.status)}</span>
+                      <span className={statusClass(item.status)}>{codeStatusLabel(item.status)}</span>
                     </td>
                     <td>{formatDate(item.createdAt)}</td>
                     <td>{getPersonName(people, item.createdById)}</td>
@@ -379,8 +366,8 @@ export default function BatchCodesPage() {
       {downloadScope ? (
         <DownloadReportDialog
           title="Download payment codes"
-          summary={`Includes ${downloadItems.length} ${downloadItems.length === 1 ? "code" : "codes"}${downloadScope === "all" ? " currently in view" : " selected"}.`}
-          combinedDescription="All selected codes will be included in one file."
+          summary={`Includes ${downloadItems.length} ${downloadItems.length === 1 ? "code" : "codes"}${downloadScope === "all" ? " currently in view" : " selected"}, with batch information.`}
+          combinedDescription="These payment codes will be included in one file, along with batch information."
           separateDescription="A separate file will be created for each payment code."
           onCancel={() => setDownloadScope(null)}
           onDownload={(format) => downloadRows(downloadItems, format)}
