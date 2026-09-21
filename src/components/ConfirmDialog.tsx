@@ -5,6 +5,7 @@ interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel: string;
+  confirmTone?: "danger" | "primary";
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -13,6 +14,7 @@ export default function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  confirmTone = "danger",
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -54,7 +56,11 @@ export default function ConfirmDialog({
           <button ref={cancelRef} type="button" className={styles.secondary} onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className={styles.danger} onClick={onConfirm}>
+          <button
+            type="button"
+            className={confirmTone === "primary" ? styles.primary : styles.danger}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </div>

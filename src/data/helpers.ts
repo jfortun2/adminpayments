@@ -89,6 +89,39 @@ export function downloadCsv(filename: string, rows: string[][]): void {
   downloadBlob(filename, new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8;" }));
 }
 
+export function downloadCsvOrZip(
+  format: "combined" | "zip",
+  {
+    combinedFilename,
+    zipFilename,
+    headers,
+    items,
+  }: {
+    combinedFilename: string;
+    zipFilename: string;
+    headers: string[];
+    items: { filename: string; values: string[] }[];
+  },
+) {
+  if (format === "zip") {
+    const used = new Set<string>();
+    downloadZip(
+      zipFilename,
+      items.map((item, index) => {
+        let name = item.filename.endsWith(".csv") ? item.filename : `${item.filename}.csv`;
+        if (used.has(name)) {
+          name = name.replace(/\.csv$/, `-${index + 1}.csv`);
+        }
+        used.add(name);
+        return { name, content: toCsv([headers, item.values]) };
+      }),
+    );
+    return;
+  }
+
+  downloadCsv(combinedFilename, [headers, ...items.map((item) => item.values)]);
+}
+
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let index = 0; index < 256; index += 1) {

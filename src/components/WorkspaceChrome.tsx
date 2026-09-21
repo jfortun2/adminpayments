@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { WorkspaceNav, WorkspaceSupport } from "./WorkspaceSwitcher";
 import styles from "./WorkspaceChrome.module.css";
 
@@ -9,23 +9,40 @@ interface WorkspaceChromeProps {
   children: ReactNode;
 }
 
+function goBack(navigate: ReturnType<typeof useNavigate>, fallback = "/") {
+  const idx = window.history.state?.idx;
+  if (typeof idx === "number" && idx > 0) {
+    navigate(-1);
+    return;
+  }
+  navigate(fallback);
+}
+
+export function WorkspaceHeader({ title }: { title?: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <header className={styles.header}>
+      <button type="button" className={styles.back} aria-label="Back" onClick={() => goBack(navigate)}>
+        ‹
+      </button>
+      <div className={styles.brand}>
+        <span className={styles.logoMark} aria-hidden="true" />
+        <span className={styles.logoText}>OLI Torus</span>
+        <span className={styles.testBadge}>TEST</span>
+      </div>
+      {title ? <h1 className={styles.title}>{title}</h1> : <span />}
+      <div className={styles.avatar} aria-label="Jessica Fortunato">
+        JF
+      </div>
+    </header>
+  );
+}
+
 export default function WorkspaceChrome({ title, authorPath, children }: WorkspaceChromeProps) {
   return (
     <div className={styles.shell}>
-      <header className={styles.header}>
-        <button type="button" className={styles.collapse} aria-label="Collapse sidebar">
-          ‹
-        </button>
-        <div className={styles.brand}>
-          <span className={styles.logoMark} aria-hidden="true" />
-          <span className={styles.logoText}>OLI Torus</span>
-          <span className={styles.testBadge}>TEST</span>
-        </div>
-        <h1 className={styles.title}>{title}</h1>
-        <div className={styles.avatar} aria-label="Jessica Fortunato">
-          JF
-        </div>
-      </header>
+      <WorkspaceHeader title={title} />
       <div className={styles.body}>
         <aside className={styles.sidebar} aria-label="Workspace">
           <WorkspaceNav active="author" authorTo={authorPath} />
