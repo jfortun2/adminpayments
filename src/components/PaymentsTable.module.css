@@ -19,6 +19,11 @@
   line-height: 24px;
 }
 
+.batchTable th,
+.batchTable td {
+  white-space: nowrap;
+}
+
 .table thead th {
   height: 50px;
   border-top: 0;
@@ -67,6 +72,7 @@
   color: inherit;
   font: inherit;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -114,16 +120,18 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-high);
+  /* Darker than --text-button so 16px text stays above 4.5:1 on zebra and selected rows. */
+  color: #0054a8;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .nameButton:hover {
-  color: var(--text-button);
-  text-decoration: underline;
+  color: #003e78;
 }
 
 .dangerButton,
@@ -223,6 +231,28 @@
   width: 1%;
   white-space: nowrap;
   text-align: center;
+}
+
+.downloadBatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border-bold);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--text-button);
+  box-shadow: var(--shadow-button);
+  font-size: 14px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.downloadBatch:hover {
+  background: #f3f8fd;
 }
 
 .idMeta {

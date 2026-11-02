@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { WorkspaceNav, WorkspaceSupport } from "./WorkspaceSwitcher";
 import styles from "./WorkspaceChrome.module.css";
 
@@ -9,23 +9,9 @@ interface WorkspaceChromeProps {
   children: ReactNode;
 }
 
-function goBack(navigate: ReturnType<typeof useNavigate>, fallback = "/") {
-  const idx = window.history.state?.idx;
-  if (typeof idx === "number" && idx > 0) {
-    navigate(-1);
-    return;
-  }
-  navigate(fallback);
-}
-
 export function WorkspaceHeader({ title }: { title?: string }) {
-  const navigate = useNavigate();
-
   return (
     <header className={styles.header}>
-      <button type="button" className={styles.back} aria-label="Back" onClick={() => goBack(navigate)}>
-        ‹
-      </button>
       <div className={styles.brand}>
         <span className={styles.logoMark} aria-hidden="true" />
         <span className={styles.logoText}>OLI Torus</span>

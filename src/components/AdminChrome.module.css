@@ -4,37 +4,12 @@
   color: #373a44;
 }
 
-.body {
-  display: grid;
-  grid-template-columns: 202px 1fr;
-  min-height: calc(100vh - 64px);
-}
-
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  background: white;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.sidebarFooter {
-  margin-top: auto;
-  padding: 8px 0 16px;
-}
-
 .main {
   padding: 32px 48px 80px;
+  max-width: 1280px;
 }
 
 @media (max-width: 900px) {
-  .body {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
   .main {
     padding: 24px 16px 48px;
   }

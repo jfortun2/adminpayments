@@ -6,24 +6,13 @@
 
 .header {
   display: grid;
-  grid-template-columns: 48px auto 1fr auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
   height: 64px;
-  padding: 0 16px 0 8px;
+  padding: 0 16px;
   background: white;
   border-bottom: 1px solid #e6e9f2;
-}
-
-.back {
-  width: 32px;
-  height: 32px;
-  border: 0;
-  background: transparent;
-  color: #6b7280;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
 }
 
 .brand {
