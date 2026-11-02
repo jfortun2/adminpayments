@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import DemoLevelSwitch from "./components/DemoLevelSwitch";
 import { PaymentsProvider } from "./context/PaymentsContext";
 import AdminHomePage from "./pages/AdminHomePage";
 import BatchCodesPage from "./pages/BatchCodesPage";
@@ -10,6 +11,7 @@ export default function App() {
   return (
     <PaymentsProvider>
       <BrowserRouter>
+        <DemoLevelSwitch />
         <Routes>
           <Route path="/" element={<AdminHomePage />} />
           <Route path="/payments" element={<GlobalPaymentsPage />} />

@@ -61,7 +61,6 @@ export default function AdminHomePage() {
         <AdminLink>Manage Students and Instructor Accounts</AdminLink>
         <AdminLink>Manage Authoring Accounts</AdminLink>
         <AdminLink badge="1">Manage Institutions</AdminLink>
-        <AdminLink to="/payments">Manage all Payments</AdminLink>
         <AdminLink>Invite New Authors</AdminLink>
         <AdminLink>Manage Communities</AdminLink>
         <AdminLink>Manage LTI 1.3 Registrations</AdminLink>
@@ -73,6 +72,7 @@ export default function AdminHomePage() {
         <AdminLink>Browse all Course Sections</AdminLink>
         <AdminLink>Ingest Project</AdminLink>
         <AdminLink>V2 Ingest Project</AdminLink>
+        <AdminLink to="/payments">Manage all Payment Codes</AdminLink>
         <AdminLink>Manage Branding</AdminLink>
         <AdminLink>Manage Publishers</AdminLink>
       </AdminSection>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import BatchFilterPanel, { type BatchFilterDraft } from "./BatchFilterPanel";
 import { ClearIcon, DownloadIcon, FilterIcon, SearchIcon } from "./Icons";
 import styles from "./PaymentsToolbar.module.css";
 
@@ -15,21 +16,33 @@ export interface FilterGroup {
   onChange: (selected: string[]) => void;
 }
 
+export interface BatchFilters {
+  after: string;
+  before: string;
+  templateOptions: FilterOption[];
+  selectedTemplates: string[];
+  creatorOptions: FilterOption[];
+  selectedCreator: string;
+  onApply: (draft: BatchFilterDraft) => void;
+}
+
 interface PaymentsToolbarProps {
   search: string;
   searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
-  filterGroups: FilterGroup[];
+  filterGroups?: FilterGroup[];
+  batchFilters?: BatchFilters;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
-  selectedCount: number;
-  allVisibleSelected: boolean;
-  someVisibleSelected: boolean;
-  onToggleSelectAll: () => void;
-  onDownloadSelected: () => void;
-  onDownloadAll: () => void;
-  downloadSelectedDisabled: boolean;
-  downloadAllDisabled: boolean;
+  showBulkActions?: boolean;
+  selectedCount?: number;
+  allVisibleSelected?: boolean;
+  someVisibleSelected?: boolean;
+  onToggleSelectAll?: () => void;
+  onDownloadSelected?: () => void;
+  onDownloadAll?: () => void;
+  downloadSelectedDisabled?: boolean;
+  downloadAllDisabled?: boolean;
   primaryAction?: ReactNode;
 }
 
@@ -37,17 +50,19 @@ export default function PaymentsToolbar({
   search,
   searchPlaceholder = "Search code or batch",
   onSearchChange,
-  filterGroups,
+  filterGroups = [],
+  batchFilters,
   onClearFilters,
   hasActiveFilters,
-  selectedCount,
-  allVisibleSelected,
-  someVisibleSelected,
+  showBulkActions = true,
+  selectedCount = 0,
+  allVisibleSelected = false,
+  someVisibleSelected = false,
   onToggleSelectAll,
   onDownloadSelected,
   onDownloadAll,
-  downloadSelectedDisabled,
-  downloadAllDisabled,
+  downloadSelectedDisabled = false,
+  downloadAllDisabled = false,
   primaryAction,
 }: PaymentsToolbarProps) {
   const [open, setOpen] = useState(false);
@@ -104,7 +119,22 @@ export default function PaymentsToolbar({
               Filter
               {hasActiveFilters ? <span className={styles.filterDot} aria-hidden="true" /> : null}
             </button>
-            {open ? (
+            {open && batchFilters ? (
+              <BatchFilterPanel
+                after={batchFilters.after}
+                before={batchFilters.before}
+                templateOptions={batchFilters.templateOptions}
+                selectedTemplates={batchFilters.selectedTemplates}
+                creatorOptions={batchFilters.creatorOptions}
+                selectedCreator={batchFilters.selectedCreator}
+                onCancel={() => setOpen(false)}
+                onApply={(draft) => {
+                  batchFilters.onApply(draft);
+                  setOpen(false);
+                }}
+              />
+            ) : null}
+            {open && !batchFilters ? (
               <div className={styles.popover} role="dialog" aria-label="Filters">
                 {filterGroups.map((group) => (
                   <fieldset key={group.id} className={styles.fieldset}>
@@ -141,6 +171,7 @@ export default function PaymentsToolbar({
         {primaryAction}
       </div>
 
+      {showBulkActions ? (
       <div className={styles.selectionRow}>
         <div className={styles.selectedCount}>
           <input
@@ -178,6 +209,7 @@ export default function PaymentsToolbar({
           </button>
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

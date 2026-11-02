@@ -83,7 +83,7 @@ function code(partial: Omit<PaymentCode, "status"> & { status?: PaymentCode["sta
   return { status: "unused", ...partial };
 }
 
-export const seedCodes: PaymentCode[] = [
+const storyCodes: PaymentCode[] = [
   code({
     id: "c1",
     batchId: "fall-partner",
@@ -292,6 +292,84 @@ export const seedCodes: PaymentCode[] = [
     createdById: "jessica",
   }),
 ];
+
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const REDEEMING_STUDENTS = ["joe", "priya", "omar", "alex", "sam", "rina", "devon", "nia", "chris", "lee", "ana", "miles", "tara"];
+
+const batchCodeTargets: Record<string, { total: number; redeemed: number; deactivated: number }> = {
+  "fall-partner": { total: 250, redeemed: 37, deactivated: 12 },
+  "summer-pilot": { total: 380, redeemed: 164, deactivated: 8 },
+  "spring-trial": { total: 210, redeemed: 48, deactivated: 90 },
+  "publisher-preview": { total: 290, redeemed: 22, deactivated: 4 },
+  "coffee-launch": { total: 340, redeemed: 96, deactivated: 6 },
+  "coffee-partners": { total: 260, redeemed: 181, deactivated: 3 },
+  "bio-orientation": { total: 360, redeemed: 51, deactivated: 9 },
+  "stats-pilot": { total: 230, redeemed: 74, deactivated: 5 },
+};
+
+function codeFromSerial(serial: number): string {
+  let value = serial;
+  const chars: string[] = [];
+  for (let index = 0; index < 8; index += 1) {
+    chars.push(CODE_ALPHABET[value % CODE_ALPHABET.length]);
+    value = Math.floor(value / CODE_ALPHABET.length);
+  }
+  return `${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+function addDays(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function expandBatchCodes(story: PaymentCode[]): PaymentCode[] {
+  const used = new Set(story.map((item) => item.code));
+  const extra: PaymentCode[] = [];
+  let serial = 1;
+
+  seedBatches.forEach((batch) => {
+    const target = batchCodeTargets[batch.id];
+    const existing = story.filter((item) => item.batchId === batch.id);
+    const redeemed = existing.filter((item) => item.status === "redeemed").length;
+    const deactivated = existing.filter((item) => item.status === "deactivated").length;
+    const addRedeemed = Math.max(0, target.redeemed - redeemed);
+    const addDeactivated = Math.max(0, target.deactivated - deactivated);
+    const addUnused = Math.max(0, target.total - existing.length - addRedeemed - addDeactivated);
+    const sectionIds = sections.filter((section) => section.templateId === batch.templateId).map((section) => section.id);
+
+    for (let index = 0; index < addRedeemed + addDeactivated + addUnused; index += 1) {
+      let nextCode = codeFromSerial(serial);
+      while (used.has(nextCode)) {
+        serial += 1;
+        nextCode = codeFromSerial(serial);
+      }
+      used.add(nextCode);
+
+      const status: PaymentCode["status"] =
+        index < addRedeemed ? "redeemed" : index < addRedeemed + addDeactivated ? "deactivated" : "unused";
+      const paymentCode: PaymentCode = {
+        id: `${batch.id}-x${serial}`,
+        batchId: batch.id,
+        code: nextCode,
+        status,
+        createdAt: batch.createdAt,
+        createdById: batch.createdById,
+      };
+      if (status === "redeemed" && sectionIds.length > 0) {
+        paymentCode.redeemedById = REDEEMING_STUDENTS[serial % REDEEMING_STUDENTS.length];
+        paymentCode.redeemedAt = addDays(batch.createdAt, (serial % 40) + 1);
+        paymentCode.redeemedForSectionId = sectionIds[serial % sectionIds.length];
+      }
+      extra.push(paymentCode);
+      serial += 1;
+    }
+  });
+
+  return [...story, ...extra];
+}
+
+export const seedCodes: PaymentCode[] = expandBatchCodes(storyCodes);
 
 function enroll(
   id: string,
