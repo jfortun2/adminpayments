@@ -26,6 +26,7 @@ export interface Template {
   id: string;
   name: string;
   publisherId: string;
+  fee: number;
 }
 
 export interface CourseSection {

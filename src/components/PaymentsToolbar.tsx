@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import BatchFilterPanel, { type BatchFilterDraft } from "./BatchFilterPanel";
-import { ClearIcon, DownloadIcon, FilterIcon, SearchIcon } from "./Icons";
+import checkIcon from "../assets/check.svg";
+import { ChevronDownIcon, ClearIcon, DownloadIcon, FilterIcon, SearchIcon } from "./Icons";
 import styles from "./PaymentsToolbar.module.css";
 
 export interface FilterOption {
@@ -16,11 +17,18 @@ export interface FilterGroup {
   onChange: (selected: string[]) => void;
 }
 
+export interface StatusFilter {
+  selected: string;
+  options: FilterOption[];
+  onChange: (selected: string) => void;
+}
+
 export interface BatchFilters {
   after: string;
   before: string;
-  templateOptions: FilterOption[];
-  selectedTemplates: string[];
+  showTemplate?: boolean;
+  templateOptions?: FilterOption[];
+  selectedTemplates?: string[];
   creatorOptions: FilterOption[];
   selectedCreator: string;
   onApply: (draft: BatchFilterDraft) => void;
@@ -31,6 +39,7 @@ interface PaymentsToolbarProps {
   searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
   filterGroups?: FilterGroup[];
+  statusFilter?: StatusFilter;
   batchFilters?: BatchFilters;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
@@ -51,6 +60,7 @@ export default function PaymentsToolbar({
   searchPlaceholder = "Search code or batch",
   onSearchChange,
   filterGroups = [],
+  statusFilter,
   batchFilters,
   onClearFilters,
   hasActiveFilters,
@@ -107,6 +117,52 @@ export default function PaymentsToolbar({
             />
           </div>
           <div className={styles.filterControls} ref={filterRef}>
+            {statusFilter ? (
+              <div className={styles.statusFilterWrap}>
+                <button
+                  ref={filterButtonRef}
+                  type="button"
+                  className={styles.statusFilter}
+                  data-active={statusFilter.selected ? "true" : undefined}
+                  aria-expanded={open}
+                  aria-haspopup="listbox"
+                  aria-controls={open ? `${searchId}-status` : undefined}
+                  onClick={() => setOpen((current) => !current)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setOpen(false);
+                    }
+                  }}
+                >
+                  {statusFilter.options.find((option) => option.value === statusFilter.selected)?.label ?? "Status"}
+                  <ChevronDownIcon />
+                </button>
+                {open ? (
+                  <div className={styles.statusMenu} id={`${searchId}-status`} role="listbox" aria-label="Status">
+                    {statusFilter.options.map((option) => {
+                      const isSelected = option.value === statusFilter.selected;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          className={styles.statusOption}
+                          onClick={() => {
+                            statusFilter.onChange(isSelected ? "" : option.value);
+                            setOpen(false);
+                            filterButtonRef.current?.focus();
+                          }}
+                        >
+                          {option.label}
+                          {isSelected ? <img src={checkIcon} alt="" width={16} height={16} /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
             <button
               ref={filterButtonRef}
               type="button"
@@ -119,10 +175,12 @@ export default function PaymentsToolbar({
               Filter
               {hasActiveFilters ? <span className={styles.filterDot} aria-hidden="true" /> : null}
             </button>
-            {open && batchFilters ? (
+            )}
+            {open && !statusFilter && batchFilters ? (
               <BatchFilterPanel
                 after={batchFilters.after}
                 before={batchFilters.before}
+                showTemplate={batchFilters.showTemplate}
                 templateOptions={batchFilters.templateOptions}
                 selectedTemplates={batchFilters.selectedTemplates}
                 creatorOptions={batchFilters.creatorOptions}
@@ -134,7 +192,7 @@ export default function PaymentsToolbar({
                 }}
               />
             ) : null}
-            {open && !batchFilters ? (
+            {open && !statusFilter && !batchFilters ? (
               <div className={styles.popover} role="dialog" aria-label="Filters">
                 {filterGroups.map((group) => (
                   <fieldset key={group.id} className={styles.fieldset}>

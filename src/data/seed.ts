@@ -42,10 +42,10 @@ export const publishers: Publisher[] = [
 ];
 
 export const templates: Template[] = [
-  { id: "intro-to-gardening", name: "Intro to Gardening", publisherId: "oli" },
-  { id: "coffee-101", name: "Coffee 101", publisherId: "oli" },
-  { id: "intro-biology", name: "Introduction to Biology", publisherId: "openstax" },
-  { id: "stats-foundations", name: "Statistics Foundations", publisherId: "openstax" },
+  { id: "intro-to-gardening", name: "Intro to Gardening", publisherId: "oli", fee: 49 },
+  { id: "coffee-101", name: "Coffee 101", publisherId: "oli", fee: 25 },
+  { id: "intro-biology", name: "Introduction to Biology", publisherId: "openstax", fee: 89 },
+  { id: "stats-foundations", name: "Statistics Foundations", publisherId: "openstax", fee: 65 },
 ];
 
 export const sections: CourseSection[] = [
@@ -71,7 +71,7 @@ function batch(
 export const seedBatches: PaymentBatch[] = [
   batch("fall-partner", "intro-to-gardening", "Fall partner Codes", "2026-08-26", "hal"),
   batch("summer-pilot", "intro-to-gardening", "Summer pilot", "2026-05-12", "mia"),
-  batch("spring-trial", "intro-to-gardening", "Spring trial", "2026-03-03", "hal", "deactivated"),
+  batch("spring-trial", "intro-to-gardening", "Spring trial", "2026-03-03", "hal"),
   batch("publisher-preview", "intro-to-gardening", "Publisher preview", "2026-01-15", "mia"),
   batch("coffee-launch", "coffee-101", "Campus launch codes", "2026-08-01", "jessica"),
   batch("coffee-partners", "coffee-101", "Partner bookstore", "2026-06-18", "hal"),

@@ -17,8 +17,9 @@ export interface BatchFilterDraft {
 interface BatchFilterPanelProps {
   after: string;
   before: string;
-  templateOptions: FilterOption[];
-  selectedTemplates: string[];
+  showTemplate?: boolean;
+  templateOptions?: FilterOption[];
+  selectedTemplates?: string[];
   creatorOptions: FilterOption[];
   selectedCreator: string;
   onApply: (draft: BatchFilterDraft) => void;
@@ -28,8 +29,9 @@ interface BatchFilterPanelProps {
 export default function BatchFilterPanel({
   after,
   before,
-  templateOptions,
-  selectedTemplates,
+  showTemplate = true,
+  templateOptions = [],
+  selectedTemplates = [],
   creatorOptions,
   selectedCreator,
   onApply,
@@ -101,12 +103,14 @@ export default function BatchFilterPanel({
         </div>
       </div>
 
-      <SearchSelect
-        label="Template"
-        options={templateOptions}
-        selected={draftTemplates}
-        onChange={setDraftTemplates}
-      />
+      {showTemplate ? (
+        <SearchSelect
+          label="Template"
+          options={templateOptions}
+          selected={draftTemplates}
+          onChange={setDraftTemplates}
+        />
+      ) : null}
 
       <SingleSelect
         label="Created by"
@@ -126,7 +130,7 @@ export default function BatchFilterPanel({
             onApply({
               after: draftAfter,
               before: draftBefore,
-              templates: draftTemplates,
+              templates: showTemplate ? draftTemplates : [],
               creator: draftCreator,
             })
           }

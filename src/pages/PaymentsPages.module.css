@@ -24,6 +24,10 @@
   font-weight: 700;
 }
 
+.batchTitle {
+  font-weight: 600;
+}
+
 .subtitle {
   margin: 0 0 24px;
   font-size: 16px;

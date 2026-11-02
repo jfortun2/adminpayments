@@ -10,7 +10,7 @@ import { formatDate, matchingCodeCountsByBatch, matchingCodeLabel, slugify, with
 import type { PaymentBatch, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
-type SortKey = "name" | "template" | "codes" | "redeemed" | "unused" | "createdAt" | "createdBy";
+type SortKey = "name" | "template" | "cost" | "codes" | "redeemed" | "unused" | "createdAt" | "createdBy";
 
 interface CodeCounts {
   total: number;
@@ -26,6 +26,12 @@ function parseList(value: string | null): string[] {
 
 function formatCount(value: number) {
   return value.toLocaleString("en-US");
+}
+
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+function formatFee(value: number) {
+  return currency.format(value);
 }
 
 export default function GlobalPaymentsPage() {
@@ -109,6 +115,7 @@ export default function GlobalPaymentsPage() {
       if (sortKey === "template") {
         return templates.find((item) => item.id === batch.templateId)?.name.toLowerCase() ?? "";
       }
+      if (sortKey === "cost") return templates.find((item) => item.id === batch.templateId)?.fee ?? 0;
       if (sortKey === "codes") return counts.total;
       if (sortKey === "redeemed") return counts.redeemed;
       if (sortKey === "unused") return counts.unused;
@@ -215,6 +222,12 @@ export default function GlobalPaymentsPage() {
                 </button>
               </th>
               <th>
+                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("cost")}>
+                  Cost
+                  {sortIcon("cost")}
+                </button>
+              </th>
+              <th>
                 <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("codes")}>
                   # Codes
                   {sortIcon("codes")}
@@ -252,7 +265,7 @@ export default function GlobalPaymentsPage() {
           <tbody>
             {visibleBatches.length === 0 ? (
               <tr>
-                <td colSpan={8} className={tableStyles.empty}>
+                <td colSpan={9} className={tableStyles.empty}>
                   No payment batches match the current search or filters.
                 </td>
               </tr>
@@ -262,7 +275,7 @@ export default function GlobalPaymentsPage() {
                 const counts = codeCounts.get(batch.id) ?? EMPTY_COUNTS;
                 const matchCount = matchingCodeCounts.get(batch.id) ?? 0;
                 return (
-                  <tr key={batch.id} data-deactivated={batch.status === "deactivated"}>
+                  <tr key={batch.id}>
                     <td>
                       <div className={tableStyles.stacked}>
                         <button
@@ -293,6 +306,7 @@ export default function GlobalPaymentsPage() {
                         "--"
                       )}
                     </td>
+                    <td className={tableStyles.metric}>{template ? formatFee(template.fee) : "--"}</td>
                     <td className={tableStyles.metric}>{formatCount(counts.total)}</td>
                     <td className={tableStyles.metric}>{formatCount(counts.redeemed)}</td>
                     <td className={tableStyles.metric}>{formatCount(counts.unused)}</td>
