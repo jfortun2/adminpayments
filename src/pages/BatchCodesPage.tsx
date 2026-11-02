@@ -1,23 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import ConfirmDialog from "../components/ConfirmDialog";
-import DownloadReportDialog from "../components/DownloadReportDialog";
-import { BackIcon, ChevronDownIcon, ChevronUpIcon } from "../components/Icons";
+import { BackIcon, ChevronDownIcon, ChevronUpIcon, DownloadIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import { PAYMENT_CODE_EXPORT_HEADERS, codeStatusLabel, paymentCodeExportRow } from "../data/codeExport";
-import { downloadCsvOrZip, formatDate, paymentCodeMatchesQuery, slugify } from "../data/helpers";
-import type { ReportDownloadFormat } from "../data/reporting";
+import { batchCodeDownloadToast, codeStatusLabel, downloadCodesForBatches } from "../data/codeExport";
+import { formatDate, paymentCodeMatchesQuery, slugify } from "../data/helpers";
 import type { CodeStatus, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
 type SortKey = "code" | "status" | "createdAt" | "createdBy" | "redeemedBy" | "redeemedFor";
-
-function parseList(value: string | null): string[] {
-  return value ? value.split(",").filter(Boolean) : [];
-}
 
 function highlightPaymentCode(code: string, query: string): ReactNode {
   const trimmed = query.trim();
@@ -38,12 +32,10 @@ export default function BatchCodesPage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { templates, batches, codes, people, sections, deactivateCode, reactivateCode } = usePayments();
-  const [selected, setSelected] = useState<string[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; codeId: string } | null>(
     null,
   );
-  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
   const firstMatchRef = useRef<HTMLTableRowElement>(null);
 
   const batch = batches.find((item) => item.id === batchId);
@@ -56,7 +48,8 @@ export default function BatchCodesPage() {
   const backLabel = isGlobal ? "Return to all batches" : "Return to template batches";
 
   const search = searchParams.get("q") ?? "";
-  const status = parseList(searchParams.get("status")) as CodeStatus[];
+  const statusParam = searchParams.get("status") ?? "";
+  const status = (["unused", "redeemed", "deactivated"].includes(statusParam) ? statusParam : "") as CodeStatus | "";
   const sortKey = (searchParams.get("sort") as SortKey) || "createdAt";
   const sortDir = (searchParams.get("dir") as SortDirection) || "asc";
 
@@ -72,7 +65,6 @@ export default function BatchCodesPage() {
       }
     });
     setSearchParams(params, { replace: true });
-    setSelected([]);
   }
 
   const visibleCodes = useMemo(() => {
@@ -88,7 +80,7 @@ export default function BatchCodesPage() {
         batch?.name.toLowerCase().includes(query) ||
         redeemedBy.includes(query) ||
         redeemedFor.includes(query);
-      const matchesStatus = status.length === 0 || status.includes(item.status);
+      const matchesStatus = status === "" || item.status === status;
       return matchesQuery && matchesStatus;
     });
 
@@ -124,9 +116,6 @@ export default function BatchCodesPage() {
     });
   }, [batch?.name, batchId, codes, people, search, sections, sortDir, sortKey, status]);
 
-  const visibleIds = visibleCodes.map((item) => item.id);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
-  const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
   const pendingCode = codes.find((item) => item.id === pendingAction?.codeId);
   const firstMatchId = visibleCodes.find((item) => paymentCodeMatchesQuery(item.code, search))?.id;
 
@@ -153,37 +142,18 @@ export default function BatchCodesPage() {
     return tableStyles.statusDeactivated;
   }
 
-  function downloadRows(rows: typeof visibleCodes, format: ReportDownloadFormat, scope: "selected" | "all") {
-    const noun = rows.length === 1 ? "code" : "codes";
-    const prefix = slugify(batch?.name ?? "batch") || "batch";
-    downloadCsvOrZip(format, {
-      combinedFilename: scope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
-      zipFilename: scope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
-      headers: PAYMENT_CODE_EXPORT_HEADERS,
-      items: rows.map((item) => ({
-        filename: slugify(item.code) || item.id,
-        rows: [paymentCodeExportRow(item, batch, { templates, people, sections })],
-      })),
+  function downloadBatch() {
+    if (!batch) return;
+    const codeCount = codes.filter((item) => item.batchId === batch.id).length;
+    const filename = slugify(batch.name) || batch.id;
+    downloadCodesForBatches("combined", [batch], codes, { templates, people, sections }, {
+      combinedFilename: `${filename}.csv`,
+      zipFilename: `${filename}.zip`,
     });
-    setToast(
-      format === "zip"
-        ? `Downloaded ${rows.length} ${noun} as separate files.`
-        : `Downloaded ${rows.length} ${noun}.`,
-    );
-    setDownloadScope(null);
+    setToast(batchCodeDownloadToast("combined", 1, codeCount));
   }
 
-  function requestDownload(scope: "selected" | "all") {
-    const rows = scope === "all" ? visibleCodes : visibleCodes.filter((item) => selected.includes(item.id));
-    if (rows.length === 1) {
-      downloadRows(rows, "combined", scope);
-      return;
-    }
-    setDownloadScope(scope);
-  }
-
-  const downloadItems =
-    downloadScope === "all" ? visibleCodes : visibleCodes.filter((item) => selected.includes(item.id));
+  const batchCodeCount = codes.filter((item) => item.batchId === batchId).length;
 
   if (!batch || (!isGlobal && !template)) {
     return (
@@ -200,41 +170,40 @@ export default function BatchCodesPage() {
         <BackIcon />
         {backLabel}
       </Link>
-      <h1 className={styles.title}>Batch: {batch.name}</h1>
+      <h1 className={`${styles.title} ${styles.batchTitle}`}>Batch: {batch.name}</h1>
 
       <PaymentsToolbar
         search={search}
         onSearchChange={(value) => updateParams({ q: value })}
-        hasActiveFilters={status.length > 0}
-        onClearFilters={() => updateParams({ q: null, status: [] })}
-        selectedCount={selected.length}
-        allVisibleSelected={allVisibleSelected}
-        someVisibleSelected={someVisibleSelected}
-        onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => requestDownload("selected")}
-        onDownloadAll={() => requestDownload("all")}
-        downloadSelectedDisabled={selected.length === 0}
-        downloadAllDisabled={visibleCodes.length === 0}
-        filterGroups={[
-          {
-            id: "status",
-            label: "Code status",
-            options: [
-              { value: "unused", label: "Unused" },
-              { value: "redeemed", label: "Redeemed" },
-              { value: "deactivated", label: "Deactivated" },
-            ],
-            selected: status,
-            onChange: (value) => updateParams({ status: value }),
-          },
-        ]}
+        hasActiveFilters={status !== ""}
+        onClearFilters={() => updateParams({ q: null, status: null })}
+        showBulkActions={false}
+        statusFilter={{
+          selected: status,
+          options: [
+            { value: "unused", label: "Unused" },
+            { value: "redeemed", label: "Redeemed" },
+            { value: "deactivated", label: "Deactivated" },
+          ],
+          onChange: (value) => updateParams({ status: value || null }),
+        }}
+        primaryAction={
+          <button
+            type="button"
+            className={tableStyles.downloadBatch}
+            disabled={batchCodeCount === 0}
+            onClick={downloadBatch}
+          >
+            <DownloadIcon />
+            Download Batch
+          </button>
+        }
       />
 
       <div className={tableStyles.tableWrap}>
         <table className={tableStyles.table}>
           <thead>
             <tr>
-              <th className={tableStyles.checkCell} />
               <th>
                 <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("code")}>
                   Payment code
@@ -245,18 +214,6 @@ export default function BatchCodesPage() {
                 <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("status")}>
                   Status
                   {sortIcon("status")}
-                </button>
-              </th>
-              <th>
-                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("createdAt")}>
-                  Created
-                  {sortIcon("createdAt")}
-                </button>
-              </th>
-              <th>
-                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("createdBy")}>
-                  Created by
-                  {sortIcon("createdBy")}
                 </button>
               </th>
               <th>
@@ -271,13 +228,15 @@ export default function BatchCodesPage() {
                   {sortIcon("redeemedFor")}
                 </button>
               </th>
-              <th className={tableStyles.actionsCell} />
+              <th className={tableStyles.actionsCell}>
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {visibleCodes.length === 0 ? (
               <tr>
-                <td colSpan={8} className={tableStyles.empty}>
+                <td colSpan={5} className={tableStyles.empty}>
                   No payment codes match the current search or filters.
                 </td>
               </tr>
@@ -290,31 +249,13 @@ export default function BatchCodesPage() {
                   <tr
                     key={item.id}
                     ref={item.id === firstMatchId ? firstMatchRef : undefined}
-                    data-selected={selected.includes(item.id)}
                     data-deactivated={item.status === "deactivated"}
                     data-match={isCodeMatch}
                   >
-                    <td className={tableStyles.checkCell}>
-                      <input
-                        className={tableStyles.checkbox}
-                        type="checkbox"
-                        checked={selected.includes(item.id)}
-                        aria-label={`Select ${item.code}`}
-                        onChange={() =>
-                          setSelected((current) =>
-                            current.includes(item.id)
-                              ? current.filter((id) => id !== item.id)
-                              : [...current, item.id],
-                          )
-                        }
-                      />
-                    </td>
                     <td className={tableStyles.nameCell}>{highlightPaymentCode(item.code, search)}</td>
                     <td>
                       <span className={statusClass(item.status)}>{codeStatusLabel(item.status)}</span>
                     </td>
-                    <td>{formatDate(item.createdAt)}</td>
-                    <td>{getPersonName(people, item.createdById)}</td>
                     <td>
                       {redeemedBy ? (
                         <div className={tableStyles.stacked}>
@@ -350,7 +291,12 @@ export default function BatchCodesPage() {
                       ) : (
                         <button
                           type="button"
-                          className={tableStyles.dangerButton}
+                          className={
+                            item.status === "redeemed"
+                              ? `${tableStyles.dangerButton} ${tableStyles.dangerButtonMuted}`
+                              : tableStyles.dangerButton
+                          }
+                          disabled={item.status === "redeemed"}
                           onClick={() => setPendingAction({ type: "deactivate", codeId: item.id })}
                         >
                           Deactivate
@@ -395,17 +341,6 @@ export default function BatchCodesPage() {
             setPendingAction(null);
             setToast(`${pendingCode.code} was reactivated.`);
           }}
-        />
-      ) : null}
-
-      {downloadScope ? (
-        <DownloadReportDialog
-          title="Download payment codes"
-          summary={`Includes ${downloadItems.length} ${downloadItems.length === 1 ? "code" : "codes"}${downloadScope === "all" ? " currently in view" : " selected"}, with batch information.`}
-          combinedDescription="These payment codes will be included in one file, along with batch information."
-          separateDescription="A separate file will be created for each payment code."
-          onCancel={() => setDownloadScope(null)}
-          onDownload={(format) => downloadScope && downloadRows(downloadItems, format, downloadScope)}
         />
       ) : null}
 

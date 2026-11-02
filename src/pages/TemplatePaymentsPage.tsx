@@ -1,50 +1,52 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import ConfirmDialog from "../components/ConfirmDialog";
+import plusIcon from "../assets/plus.svg";
 import CreateBatchPanel from "../components/CreateBatchPanel";
-import DownloadReportDialog from "../components/DownloadReportDialog";
-import { ChevronDownIcon, ChevronIcon, ChevronUpIcon } from "../components/Icons";
+import { ChevronDownIcon, ChevronIcon, ChevronUpIcon, DownloadIcon } from "../components/Icons";
 import PaymentsToolbar from "../components/PaymentsToolbar";
 import tableStyles from "../components/PaymentsTable.module.css";
 import toolbarStyles from "../components/PaymentsToolbar.module.css";
 import Toast from "../components/Toast";
 import { getPersonName, usePayments } from "../context/PaymentsContext";
-import {
-  batchCodeDownloadSummary,
-  batchCodeDownloadToast,
-  codesInBatches,
-  downloadCodesForBatches,
-} from "../data/codeExport";
+import { batchCodeDownloadToast, downloadCodesForBatches } from "../data/codeExport";
 import { formatDate, matchingCodeCountsByBatch, matchingCodeLabel, slugify, withSearchQuery } from "../data/helpers";
-import type { ReportDownloadFormat } from "../data/reporting";
-import type { BatchStatus, SortDirection } from "../data/types";
+import type { PaymentBatch, SortDirection } from "../data/types";
 import styles from "./PaymentsPages.module.css";
 
-type SortKey = "name" | "createdAt" | "createdBy";
+type SortKey = "name" | "codes" | "redeemed" | "unused" | "createdAt" | "createdBy";
+
+interface CodeCounts {
+  total: number;
+  redeemed: number;
+  unused: number;
+}
+
+const EMPTY_COUNTS: CodeCounts = { total: 0, redeemed: 0, unused: 0 };
 
 function parseList(value: string | null): string[] {
   return value ? value.split(",").filter(Boolean) : [];
+}
+
+function formatCount(value: number) {
+  return value.toLocaleString("en-US");
 }
 
 export default function TemplatePaymentsPage() {
   const { templateId = "" } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { templates, batches, codes, people, sections, createBatch, deactivateBatch, reactivateBatch } =
-    usePayments();
+  const { templates, batches, codes, people, sections, createBatch } = usePayments();
   const createButtonRef = useRef<HTMLButtonElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [pendingAction, setPendingAction] = useState<{ type: "deactivate" | "reactivate"; batchId: string } | null>(
-    null,
-  );
-  const [downloadScope, setDownloadScope] = useState<"selected" | "all" | null>(null);
 
   const template = templates.find((item) => item.id === templateId);
   const search = searchParams.get("q") ?? "";
   const createdBy = parseList(searchParams.get("createdBy"));
-  const status = parseList(searchParams.get("status")) as BatchStatus[];
+  const after = searchParams.get("after") ?? "";
+  const before = searchParams.get("before") ?? "";
+  const afterDate = after.slice(0, 10);
+  const beforeDate = before.slice(0, 10);
   const sortKey = (searchParams.get("sort") as SortKey) || "createdAt";
   const sortDir = (searchParams.get("dir") as SortDirection) || "desc";
 
@@ -60,7 +62,6 @@ export default function TemplatePaymentsPage() {
       }
     });
     setSearchParams(params, { replace: true });
-    setSelected([]);
   }
 
   const templateBatches = useMemo(
@@ -73,6 +74,18 @@ export default function TemplatePaymentsPage() {
     return ids.map((id) => ({ value: id, label: getPersonName(people, id) }));
   }, [people, templateBatches]);
 
+  const codeCounts = useMemo(() => {
+    const counts = new Map<string, CodeCounts>();
+    codes.forEach((code) => {
+      const current = counts.get(code.batchId) ?? { total: 0, redeemed: 0, unused: 0 };
+      current.total += 1;
+      if (code.status === "redeemed") current.redeemed += 1;
+      if (code.status === "unused") current.unused += 1;
+      counts.set(code.batchId, current);
+    });
+    return counts;
+  }, [codes]);
+
   const matchingCodeCounts = useMemo(() => matchingCodeCountsByBatch(codes, search), [codes, search]);
 
   const visibleBatches = useMemo(() => {
@@ -84,34 +97,30 @@ export default function TemplatePaymentsPage() {
         batch.name.toLowerCase().includes(query) ||
         (matchingCodeCounts.get(batch.id) ?? 0) > 0;
       const matchesCreator = createdBy.length === 0 || createdBy.includes(batch.createdById);
-      const matchesStatus = status.length === 0 || status.includes(batch.status);
-      return matchesQuery && matchesCreator && matchesStatus;
+      const matchesAfter = afterDate === "" || batch.createdAt >= afterDate;
+      const matchesBefore = beforeDate === "" || batch.createdAt <= beforeDate;
+      return matchesQuery && matchesCreator && matchesAfter && matchesBefore;
     });
 
-    const sorted = [...filtered].sort((a, b) => {
-      const left =
-        sortKey === "name"
-          ? a.name.toLowerCase()
-          : sortKey === "createdBy"
-            ? getPersonName(people, a.createdById).toLowerCase()
-            : a.createdAt;
-      const right =
-        sortKey === "name"
-          ? b.name.toLowerCase()
-          : sortKey === "createdBy"
-            ? getPersonName(people, b.createdById).toLowerCase()
-            : b.createdAt;
+    const valueOf = (batch: (typeof filtered)[number]): string | number => {
+      const counts = codeCounts.get(batch.id) ?? EMPTY_COUNTS;
+      if (sortKey === "name") return batch.name.toLowerCase();
+      if (sortKey === "createdBy") return getPersonName(people, batch.createdById).toLowerCase();
+      if (sortKey === "codes") return counts.total;
+      if (sortKey === "redeemed") return counts.redeemed;
+      if (sortKey === "unused") return counts.unused;
+      return batch.createdAt;
+    };
+
+    return [...filtered].sort((a, b) => {
+      const left = valueOf(a);
+      const right = valueOf(b);
       const result = left < right ? -1 : left > right ? 1 : 0;
       return sortDir === "asc" ? result : -result;
     });
+  }, [afterDate, beforeDate, codeCounts, createdBy, matchingCodeCounts, people, search, sortDir, sortKey, templateBatches]);
 
-    return sorted;
-  }, [createdBy, matchingCodeCounts, people, search, sortDir, sortKey, status, templateBatches]);
-
-  const visibleIds = visibleBatches.map((batch) => batch.id);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
-  const someVisibleSelected = visibleIds.some((id) => selected.includes(id));
-  const hasActiveFilters = createdBy.length > 0 || status.length > 0;
+  const hasActiveFilters = createdBy.length > 0 || afterDate !== "" || beforeDate !== "";
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -126,41 +135,15 @@ export default function TemplatePaymentsPage() {
     return sortDir === "asc" ? <ChevronUpIcon /> : <ChevronDownIcon />;
   }
 
-  function toggleRow(id: string) {
-    setSelected((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
-    );
-  }
-
-  function downloadBatches(
-    rows: typeof visibleBatches,
-    format: ReportDownloadFormat,
-    scope: "selected" | "all",
-  ) {
-    const prefix = slugify(template?.name ?? "template") || "template";
-    const codeCount = codesInBatches(codes, rows).length;
-    downloadCodesForBatches(format, rows, codes, { templates, people, sections }, {
-      combinedFilename: scope === "all" ? `${prefix}-codes.csv` : `${prefix}-codes-selected.csv`,
-      zipFilename: scope === "all" ? `${prefix}-codes.zip` : `${prefix}-codes-selected.zip`,
+  function downloadBatch(batch: PaymentBatch) {
+    const codeCount = codes.filter((code) => code.batchId === batch.id).length;
+    const filename = slugify(batch.name) || batch.id;
+    downloadCodesForBatches("combined", [batch], codes, { templates, people, sections }, {
+      combinedFilename: `${filename}.csv`,
+      zipFilename: `${filename}.zip`,
     });
-    setToast(batchCodeDownloadToast(format, rows.length, codeCount));
-    setDownloadScope(null);
+    setToast(batchCodeDownloadToast("combined", 1, codeCount));
   }
-
-  function requestDownload(scope: "selected" | "all") {
-    const rows = scope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
-    if (rows.length === 1) {
-      downloadBatches(rows, "combined", scope);
-      return;
-    }
-    setDownloadScope(scope);
-  }
-
-  const downloadRows =
-    downloadScope === "all" ? visibleBatches : visibleBatches.filter((batch) => selected.includes(batch.id));
-  const downloadCodeCount = codesInBatches(codes, downloadRows).length;
-
-  const pendingBatch = templateBatches.find((batch) => batch.id === pendingAction?.batchId);
 
   if (!template) {
     return (
@@ -184,34 +167,22 @@ export default function TemplatePaymentsPage() {
         search={search}
         onSearchChange={(value) => updateParams({ q: value })}
         hasActiveFilters={hasActiveFilters}
-        onClearFilters={() => updateParams({ q: null, createdBy: [], status: [] })}
-        selectedCount={selected.length}
-        allVisibleSelected={allVisibleSelected}
-        someVisibleSelected={someVisibleSelected}
-        onToggleSelectAll={() => setSelected(allVisibleSelected ? [] : visibleIds)}
-        onDownloadSelected={() => requestDownload("selected")}
-        onDownloadAll={() => requestDownload("all")}
-        downloadSelectedDisabled={selected.length === 0}
-        downloadAllDisabled={visibleBatches.length === 0}
-        filterGroups={[
-          {
-            id: "createdBy",
-            label: "Created by",
-            options: creatorOptions,
-            selected: createdBy,
-            onChange: (value) => updateParams({ createdBy: value }),
-          },
-          {
-            id: "status",
-            label: "Batch status",
-            options: [
-              { value: "active", label: "Active" },
-              { value: "deactivated", label: "Deactivated" },
-            ],
-            selected: status,
-            onChange: (value) => updateParams({ status: value }),
-          },
-        ]}
+        onClearFilters={() => updateParams({ q: null, createdBy: [], after: null, before: null, status: null })}
+        showBulkActions={false}
+        batchFilters={{
+          after,
+          before,
+          showTemplate: false,
+          creatorOptions,
+          selectedCreator: createdBy[0] ?? "",
+          onApply: (draft) =>
+            updateParams({
+              after: draft.after || null,
+              before: draft.before || null,
+              createdBy: draft.creator ? [draft.creator] : [],
+              status: null,
+            }),
+        }}
         primaryAction={
           <button
             ref={createButtonRef}
@@ -219,20 +190,38 @@ export default function TemplatePaymentsPage() {
             className={toolbarStyles.primaryButton}
             onClick={() => setPanelOpen(true)}
           >
+            <img src={plusIcon} alt="" width={16} height={16} />
             Create New Batch
           </button>
         }
       />
 
       <div className={tableStyles.tableWrap}>
-        <table className={tableStyles.table}>
+        <table className={`${tableStyles.table} ${tableStyles.batchTable}`}>
           <thead>
             <tr>
-              <th className={tableStyles.checkCell} />
               <th>
                 <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("name")}>
                   Batch Name
                   {sortIcon("name")}
+                </button>
+              </th>
+              <th>
+                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("codes")}>
+                  # Codes
+                  {sortIcon("codes")}
+                </button>
+              </th>
+              <th>
+                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("redeemed")}>
+                  # Redeemed
+                  {sortIcon("redeemed")}
+                </button>
+              </th>
+              <th>
+                <button type="button" className={tableStyles.sortButton} onClick={() => toggleSort("unused")}>
+                  # Unused
+                  {sortIcon("unused")}
                 </button>
               </th>
               <th>
@@ -247,34 +236,24 @@ export default function TemplatePaymentsPage() {
                   {sortIcon("createdBy")}
                 </button>
               </th>
-              <th className={tableStyles.actionsCell} />
+              <th className={tableStyles.downloadCell}>
+                <span className="sr-only">Download</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {visibleBatches.length === 0 ? (
               <tr>
-                <td colSpan={5} className={tableStyles.empty}>
+                <td colSpan={7} className={tableStyles.empty}>
                   No payment batches match the current search or filters.
                 </td>
               </tr>
             ) : (
               visibleBatches.map((batch) => {
+                const counts = codeCounts.get(batch.id) ?? EMPTY_COUNTS;
                 const matchCount = matchingCodeCounts.get(batch.id) ?? 0;
                 return (
-                  <tr
-                    key={batch.id}
-                    data-selected={selected.includes(batch.id)}
-                    data-deactivated={batch.status === "deactivated"}
-                  >
-                    <td className={tableStyles.checkCell}>
-                      <input
-                        className={tableStyles.checkbox}
-                        type="checkbox"
-                        checked={selected.includes(batch.id)}
-                        aria-label={`Select ${batch.name}`}
-                        onChange={() => toggleRow(batch.id)}
-                      />
-                    </td>
+                  <tr key={batch.id}>
                     <td>
                       <div className={tableStyles.stacked}>
                         <button
@@ -299,26 +278,21 @@ export default function TemplatePaymentsPage() {
                         ) : null}
                       </div>
                     </td>
+                    <td className={tableStyles.metric}>{formatCount(counts.total)}</td>
+                    <td className={tableStyles.metric}>{formatCount(counts.redeemed)}</td>
+                    <td className={tableStyles.metric}>{formatCount(counts.unused)}</td>
                     <td>{formatDate(batch.createdAt)}</td>
                     <td>{getPersonName(people, batch.createdById)}</td>
-                    <td className={tableStyles.actionsCell}>
-                      {batch.status === "active" ? (
-                        <button
-                          type="button"
-                          className={tableStyles.dangerButton}
-                          onClick={() => setPendingAction({ type: "deactivate", batchId: batch.id })}
-                        >
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={tableStyles.reactivateButton}
-                          onClick={() => setPendingAction({ type: "reactivate", batchId: batch.id })}
-                        >
-                          Reactivate
-                        </button>
-                      )}
+                    <td className={tableStyles.downloadCell}>
+                      <button
+                        type="button"
+                        className={tableStyles.downloadBatch}
+                        aria-label={`Download batch ${batch.name}`}
+                        onClick={() => downloadBatch(batch)}
+                      >
+                        <DownloadIcon />
+                        Download Batch
+                      </button>
                     </td>
                   </tr>
                 );
@@ -340,46 +314,6 @@ export default function TemplatePaymentsPage() {
             setToast(`Created ${created.name} with ${count.toLocaleString()} codes.`);
             createButtonRef.current?.focus();
           }}
-        />
-      ) : null}
-
-      {pendingBatch && pendingAction?.type === "deactivate" ? (
-        <ConfirmDialog
-          title="Deactivate this batch?"
-          message={`Deactivate ${pendingBatch.name}? Unused codes in this batch will no longer be redeemable.`}
-          confirmLabel="Deactivate"
-          onCancel={() => setPendingAction(null)}
-          onConfirm={() => {
-            deactivateBatch(pendingBatch.id);
-            setPendingAction(null);
-            setToast(`${pendingBatch.name} was deactivated.`);
-          }}
-        />
-      ) : null}
-
-      {pendingBatch && pendingAction?.type === "reactivate" ? (
-        <ConfirmDialog
-          title="Reactivate this batch?"
-          message={`Reactivate ${pendingBatch.name}? Unused codes in this batch will be redeemable again.`}
-          confirmLabel="Reactivate"
-          confirmTone="primary"
-          onCancel={() => setPendingAction(null)}
-          onConfirm={() => {
-            reactivateBatch(pendingBatch.id);
-            setPendingAction(null);
-            setToast(`${pendingBatch.name} was reactivated.`);
-          }}
-        />
-      ) : null}
-
-      {downloadScope ? (
-        <DownloadReportDialog
-          title="Download payment codes"
-          summary={batchCodeDownloadSummary(downloadRows, downloadCodeCount, downloadScope)}
-          combinedDescription="Every payment code from these batches will be included in one file, along with batch information."
-          separateDescription="A separate file will be created for each batch, containing all of its payment codes and batch information."
-          onCancel={() => setDownloadScope(null)}
-          onDownload={(format) => downloadScope && downloadBatches(downloadRows, format, downloadScope)}
         />
       ) : null}
 
